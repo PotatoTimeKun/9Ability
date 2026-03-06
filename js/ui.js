@@ -11,6 +11,7 @@ class UI {
         this.selectedGridSlot = null;
 
         this.startBtn.addEventListener("click", () => {
+            if (this.game && this.game.audio) this.game.audio.playSE('button');
             this.game.start();
         });
 
@@ -22,6 +23,8 @@ class UI {
 
         this.restartBtn = document.getElementById("restart-btn");
         this.shareBtn = document.getElementById("share-btn");
+        this.autoSelectBtn = document.getElementById("auto-select-btn");
+        this.downloadBtn = document.getElementById("download-btn");
 
         if (this.restartBtn) {
             this.restartBtn.addEventListener("click", () => {
@@ -31,6 +34,14 @@ class UI {
 
         if (this.shareBtn) {
             this.shareBtn.addEventListener("click", () => this.shareToX());
+        }
+
+        if (this.autoSelectBtn) {
+            this.autoSelectBtn.addEventListener("click", () => this.autoSelectAbilities());
+        }
+
+        if (this.downloadBtn) {
+            this.downloadBtn.addEventListener("click", () => this.downloadResultImage());
         }
 
         this.initAbilitySelection();
@@ -53,20 +64,136 @@ class UI {
         this.resultScreen.classList.remove("hidden");
         document.getElementById("final-score").innerText = "到達ステージ: " + this.game.stage;
 
+        // Render final grid in result screen
+        const finalGrid = document.getElementById("final-abilities");
+        if (finalGrid) {
+            finalGrid.innerHTML = "";
+            this.gridSlots.forEach(ability => {
+                const cell = document.createElement("div");
+                cell.className = "grid-cell filled";
+                cell.style.borderStyle = "solid";
+                if (ability) {
+                    cell.innerHTML = `<div class="ability-icon attr-${ability.type}">${ability.icon}</div>`;
+                }
+                finalGrid.appendChild(cell);
+            });
+        }
+
         // Generate summary of picked abilities for sharing
         this.selectedAbilityNames = this.gridSlots.filter(a => a !== null).map(a => a.name).join("、");
 
         let bingoMsg = [];
         if (this.game.abilities && this.game.abilities.bingoBonuses) {
             let bb = this.game.abilities.bingoBonuses;
-            if (bb.attack > 0) bingoMsg.push(`攻撃ビンゴx${bb.attack}`);
-            if (bb.defense > 0) bingoMsg.push(`防御ビンゴx${bb.defense}`);
-            if (bb.special > 0) bingoMsg.push(`特殊ビンゴx${bb.special}`);
+            if (bb.attack > 0) bingoMsg.push(`攻撃x${bb.attack}`);
+            if (bb.defense > 0) bingoMsg.push(`防御x${bb.defense}`);
+            if (bb.special > 0) bingoMsg.push(`特殊x${bb.special}`);
         }
 
-        let bingoText = bingoMsg.length > 0 ? `\n発動ボーナス: ${bingoMsg.join(", ")}` : "";
+        let bingoText = bingoMsg.length > 0 ? `ビンゴ：${bingoMsg.join(" / ")}` : "";
 
-        this.shareText = `【9Ability】でステージ${this.game.stage}に到達しました！\n\n構成した能力:\n${this.selectedAbilityNames}${bingoText}\n\n#9Ability #ゲーム開発 #個人開発`;
+        // Shortened tweet text with corrected title
+        this.shareText = `【私を構成する9つの能力】\nステージ${this.game.stage}到達！\n${bingoText}\n\n#私を構成する9つの能力 #ゲーム開発`;
+    }
+
+    autoSelectAbilities() {
+        let shuffled = [...ABILITIES_DATA].sort(() => 0.5 - Math.random());
+        this.gridSlots = shuffled.slice(0, 9);
+        this.updateGridVisuals();
+        this.checkStartCondition();
+    }
+
+    downloadResultImage() {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = 600;
+        canvas.height = 800;
+
+        // Background
+        ctx.fillStyle = "#0d1117";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Title
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 30px Inter";
+        ctx.textAlign = "center";
+        ctx.fillText("私を構成する9つの能力", 300, 50);
+
+        // Score
+        ctx.font = "bold 24px Inter";
+        ctx.fillStyle = "#2ed573";
+        ctx.fillText(`到達ステージ: ${this.game.stage}`, 300, 100);
+
+        // Draw grid
+        const startX = 150;
+        const startY = 150;
+        const cellSize = 90;
+        const gap = 10;
+
+        ctx.font = "bold 24px Inter";
+        for (let i = 0; i < 9; i++) {
+            let row = Math.floor(i / 3);
+            let col = i % 3;
+            let x = startX + col * (cellSize + gap);
+            let y = startY + row * (cellSize + gap);
+
+            // Draw cell bg
+            ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+            ctx.fillRect(x, y, cellSize, cellSize);
+
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+            ctx.strokeRect(x, y, cellSize, cellSize);
+
+            let ability = this.gridSlots[i];
+            if (ability) {
+                if (ability.type === "attack") ctx.fillStyle = "#ff4757";
+                else if (ability.type === "defense") ctx.fillStyle = "#1e90ff";
+                else ctx.fillStyle = "#9b59b6";
+
+                // Draw icon bg
+                ctx.fillRect(x + 10, y + 10, cellSize - 20, cellSize - 20);
+
+                // Draw Icon text
+                ctx.fillStyle = "#ffffff";
+                ctx.fillText(ability.icon, x + cellSize / 2, y + cellSize / 2 + 8);
+            }
+        }
+
+        // Draw List of abilities below the grid
+        ctx.font = "16px Inter";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#e6edf3";
+
+        // Wrap text roughly for ability names
+        let namesText = "構成: " + this.selectedAbilityNames;
+        this.wrapText(ctx, namesText, 300, 520, 500, 24);
+
+        // Download
+        const link = document.createElement("a");
+        link.download = `9Ability_Result_Stage${this.game.stage}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+    }
+
+    wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+        let words = text.split('、');
+        let line = '';
+
+        for (let n = 0; n < words.length; n++) {
+            let testLine = line + words[n] + '、';
+            let metrics = ctx.measureText(testLine);
+            let testWidth = metrics.width;
+
+            if (testWidth > maxWidth && n > 0) {
+                ctx.fillText(line, x, y);
+                line = words[n] + '、';
+                y += lineHeight;
+            } else {
+                line = testLine;
+            }
+        }
+        if (line.endsWith('、')) line = line.slice(0, -1);
+        ctx.fillText(line, x, y);
     }
 
     shareToX() {
@@ -196,11 +323,35 @@ class UI {
         // Reset all list items
         Array.from(listItems).forEach(item => item.classList.remove("selected"));
 
+        // Evaluate bingos for UI
+        const lines = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Horizontal
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Vertical
+            [0, 4, 8], [2, 4, 6]             // Diagonal
+        ];
+
+        let bingoCells = new Set();
+        lines.forEach(line => {
+            let isComplete = true;
+            line.forEach(idx => {
+                let a = this.gridSlots[idx];
+                if (!a) isComplete = false;
+            });
+            if (isComplete) {
+                let a0 = this.gridSlots[line[0]];
+                let a1 = this.gridSlots[line[1]];
+                let a2 = this.gridSlots[line[2]];
+                if (a0 && a1 && a2 && a0.type === a1.type && a1.type === a2.type) {
+                    line.forEach(idx => bingoCells.add(idx));
+                }
+            }
+        });
+
         for (let i = 0; i < 9; i++) {
             const slot = slots[i];
             const ability = this.gridSlots[i];
 
-            slot.classList.remove("selected-slot");
+            slot.classList.remove("selected-slot", "bingo-active");
             if (i === this.selectedGridSlot) {
                 slot.classList.add("selected-slot");
             }
@@ -211,6 +362,10 @@ class UI {
                         <button class="remove-btn">×</button>
                     `;
                 slot.classList.add("filled");
+
+                if (bingoCells.has(i)) {
+                    slot.classList.add("bingo-active");
+                }
 
                 // Add remove listener
                 slot.querySelector(".remove-btn").onclick = (e) => {

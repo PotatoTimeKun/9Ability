@@ -3,6 +3,7 @@ class Game {
         this.canvas = document.getElementById("game-canvas");
         this.ctx = this.canvas.getContext("2d");
         this.ui = new UI(this);
+        this.audio = new AudioManager();
 
         this.lastTime = 0;
         this.isRunning = false;
@@ -39,6 +40,7 @@ class Game {
         this.abilities = new AbilityManager(this.player);
         this.abilities.setAbilities(this.ui.gridSlots);
         this.isRunning = true;
+        this.audio.playBGM();
         this.lastTime = performance.now();
         requestAnimationFrame((t) => this.loop(t));
     }
@@ -189,6 +191,7 @@ class Game {
     }
 
     bossDefeated() {
+        if (this.audio) this.audio.playSE('win');
         this.bossActive = false;
         this.stage++;
         this.timeRemaining = 60; // Reset for next stage
@@ -216,6 +219,10 @@ class Game {
 
     gameOver() {
         this.isRunning = false;
+        if (this.audio) {
+            this.audio.stopBGM();
+            this.audio.playSE('gameover');
+        }
         this.ui.showResultScreen();
     }
 

@@ -78,6 +78,10 @@ class Player {
         this.hp = Math.max(0, this.hp);
         this.invulnerableTime = 0.5; // 0.5s invulnerability
 
+        if (game && game.audio) {
+            game.audio.playSE('damage');
+        }
+
         // Screen shake or visual effect could be added here
         const gameScreen = document.getElementById("game-screen");
         gameScreen.classList.add("shake");

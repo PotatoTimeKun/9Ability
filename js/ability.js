@@ -303,6 +303,7 @@ class AbilityManager {
                 }
             });
         } else if (id === "a2") { // Auto Aim
+            if (game.audio) game.audio.playSE('slash');
             let target = this.getClosestEnemy(game);
             if (target) {
                 let angle = Math.atan2(target.y - this.player.y, target.x - this.player.x);
