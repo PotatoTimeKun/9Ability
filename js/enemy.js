@@ -3,7 +3,7 @@ class Enemy {
         this.x = x;
         this.y = y;
         this.type = type; // "triangle", "circle", "square", etc.
-        this.hp = 30; // Increased base HP (was 20)
+        this.hp = 45; // Increased base HP (was 30)
         this.speed = 65; // Increased base speed (was 50)
         this.size = 15;
         this.damage = 15; // Set base damage so it can scale

@@ -27,6 +27,21 @@ class UI {
         this.resetBtn = document.getElementById("reset-btn");
         this.downloadBtn = document.getElementById("download-btn");
 
+        this.tutorialBtn = document.getElementById("tutorial-btn");
+        this.tutorialModal = document.getElementById("tutorial-modal");
+        this.closeTutorialBtn = document.getElementById("close-tutorial-btn");
+
+        if (this.tutorialBtn) {
+            this.tutorialBtn.addEventListener("click", () => {
+                this.tutorialModal.classList.remove("hidden");
+            });
+        }
+        if (this.closeTutorialBtn) {
+            this.closeTutorialBtn.addEventListener("click", () => {
+                this.tutorialModal.classList.add("hidden");
+            });
+        }
+
         if (this.restartBtn) {
             this.restartBtn.addEventListener("click", () => {
                 location.href = window.location.pathname; // Restart without query args normally
@@ -90,7 +105,7 @@ class UI {
         const shareUrl = window.location.origin + window.location.pathname + "?b=" + buildIds;
 
         // Shortened tweet text with corrected title
-        this.shareText = `【私を構成する9つの能力】\nステージ${this.game.stage}到達！\n\n#私を構成する9つの能力 \n${shareUrl}`;
+        this.shareText = `【私を構成する9つの能力】\nステージ${this.game.stage}到達！\n\n#私を構成する9つの能力\n同じ能力で開始 → ${shareUrl}`;
     }
 
     resetAbilities() {

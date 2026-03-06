@@ -131,11 +131,16 @@ button:disabled {
     cursor: not-allowed;
 }
 
-.mute-btn {
+.bottom-right-controls {
     position: absolute;
     bottom: 10px;
     right: 10px;
     z-index: 100;
+    display: flex;
+    gap: 10px;
+}
+
+.icon-btn {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -145,8 +150,26 @@ button:disabled {
     font-size: 1.2rem;
     background: var(--glass-bg);
     border: 1px solid rgba(255, 255, 255, 0.3);
+    color: var(--text-color);
     margin-top: 0;
     padding: 0;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.footer {
+    margin-top: 30px;
+    font-size: 0.8rem;
+    color: #888;
+    text-align: center;
+    line-height: 1.5;
 }
 
 canvas {
@@ -247,6 +270,12 @@ canvas {
 }
 
 /* Ability Selection Grid */
+#selection-screen {
+    overflow-y: auto;
+    justify-content: flex-start;
+    padding: 30px 0 80px 0;
+}
+
 .selection-container {
     display: flex;
     gap: 40px;
@@ -326,6 +355,24 @@ canvas {
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 20px;
+    width: 100%;
+    max-width: 500px;
+    justify-content: center;
+    padding: 0 10px;
+}
+
+.action-buttons button {
+    flex: 1;
+    min-width: 80px;
+    margin-top: 0;
 }
 
 .ability-item {
@@ -478,5 +525,14 @@ canvas {
         width: 30px;
         height: 30px;
         font-size: 1rem;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .action-buttons button {
+        width: 100%;
+        margin-top: 5px;
     }
 }

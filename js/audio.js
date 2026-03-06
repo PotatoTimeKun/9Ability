@@ -16,6 +16,7 @@ class AudioManager {
 
         this.muteBtn = document.getElementById('mute-btn');
         if (this.muteBtn) {
+            this.muteBtn.innerText = this.isMuted ? '🔇' : '🔊';
             this.muteBtn.addEventListener('click', () => this.toggleMute());
         }
     }

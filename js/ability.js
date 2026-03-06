@@ -107,15 +107,9 @@ class AbilityManager {
             if (isComplete) {
                 // If all 3 match the same type, big bonus. Otherwise, mixed bonus?
                 // Spec says "attribute matched bonus". Let's give bonus based on majority type or pure line.
-                if (typeCount.attack === 3) this.bingoBonuses.attack += 2; // Pure line
-                else if (typeCount.defense === 3) this.bingoBonuses.defense += 2;
-                else if (typeCount.special === 3) this.bingoBonuses.special += 2;
-                else {
-                    // Mixed line bonus - just count what's there
-                    if (typeCount.attack > 0) this.bingoBonuses.attack += 1;
-                    if (typeCount.defense > 0) this.bingoBonuses.defense += 1;
-                    if (typeCount.special > 0) this.bingoBonuses.special += 1;
-                }
+                if (typeCount.attack === 3) this.bingoBonuses.attack += 1; // Pure line
+                else if (typeCount.defense === 3) this.bingoBonuses.defense += 1;
+                else if (typeCount.special === 3) this.bingoBonuses.special += 1;
             }
         });
         console.log("Bingo Bonuses Awarded:", this.bingoBonuses);
@@ -359,7 +353,7 @@ class AbilityManager {
                         this.projectiles.push({
                             id: "a2", x: this.player.x, y: this.player.y,
                             vx: Math.cos(angle) * 300, vy: Math.sin(angle) * 300,
-                            size: 5, damage: 15 * bingoDmgMult, life: 2, pierce: 0, color: "#ff4757"
+                            size: 5 * this.sizeMultiplier, damage: 15 * bingoDmgMult, life: 2, pierce: 0, color: "#ff4757"
                         });
                     }
                 }, i * 100); // Stagger shots simply
@@ -368,7 +362,7 @@ class AbilityManager {
             let a4Count = overrideCount || this.getAbilityCount("a4");
             this.projectiles.push({
                 id: "a4", x: this.player.x, y: this.player.y,
-                vx: 0, vy: 0, size: 15 + (5 * (a4Count - 1)), damage: (5 * a4Count) * bingoDmgMult, life: 1.5 + (0.5 * (a4Count - 1)), pierce: 999, color: "#ff9f43"
+                vx: 0, vy: 0, size: (15 + (5 * (a4Count - 1))) * this.sizeMultiplier, damage: (5 * a4Count) * bingoDmgMult, life: 1.5 + (0.5 * (a4Count - 1)), pierce: 999, color: "#ff9f43"
             });
         } else if (id === "a5") { // Cross Laser
             let a5Count = overrideCount || this.getAbilityCount("a5");
@@ -386,7 +380,7 @@ class AbilityManager {
                 this.projectiles.push({
                     id: "a5", type: "laser", x: this.player.x, y: this.player.y,
                     vx: Math.cos(a) * 1000, vy: Math.sin(a) * 1000,
-                    size: 2 + (a5Count - 1) * 2, damage: (20 * a5Count) * bingoDmgMult, life: 0.2, pierce: 999, color: "#ff4757"
+                    size: (2 + (a5Count - 1) * 2) * this.sizeMultiplier, damage: (20 * a5Count) * bingoDmgMult, life: 0.2, pierce: 999, color: "#ff4757"
                 });
             });
         } else if (id === "a6") { // Split shot
@@ -397,7 +391,7 @@ class AbilityManager {
                 this.projectiles.push({
                     id: "a6", x: this.player.x, y: this.player.y,
                     vx: Math.cos(angle) * 200, vy: Math.sin(angle) * 200,
-                    size: 4, damage: (10 * a6Count) * bingoDmgMult, life: 1.5, pierce: 0, color: "#ff6b81"
+                    size: 4 * this.sizeMultiplier, damage: (10 * a6Count) * bingoDmgMult, life: 1.5, pierce: 0, color: "#ff6b81"
                 });
             }
         } else if (id === "a7") { // Chain Lightning
@@ -409,16 +403,18 @@ class AbilityManager {
                 this.projectiles.push({
                     id: "a7", x: this.player.x, y: this.player.y,
                     vx: Math.cos(angle) * 400, vy: Math.sin(angle) * 400,
-                    size: 6 * this.sizeMultiplier, damage: (25 * a7Count) * bingoDmgMult, life: 1, pierce: chains, color: "#feca57",
+                    size: 6 * this.sizeMultiplier, damage: (35 * a7Count) * bingoDmgMult, life: 1, pierce: chains, color: "#feca57",
                     stackCount: a7Count // Pass down for chains
                 });
             }
         } else if (id === "d1") { // Energy Shield
             // Stack shields
             let d1Count = overrideCount || this.getAbilityCount("d1");
-            this.shieldStacks = (this.shieldStacks || 0) + d1Count;
-            this.hasShield = true;
-            game.createFloatingText("SHIELD UP x" + this.shieldStacks, this.player.x, this.player.y - 20, "#82ccdd");
+            if ((this.shieldStacks || 0) < d1Count) {
+                this.shieldStacks = (this.shieldStacks || 0) + 1;
+                this.hasShield = true;
+                game.createFloatingText("SHIELD UP x" + this.shieldStacks, this.player.x, this.player.y - 20, "#82ccdd");
+            }
         } else if (id === "d7") { // Light Chain
             let d7Count = overrideCount || this.getAbilityCount("d7");
             let radius = 200 + (50 * (d7Count - 1));
@@ -451,15 +447,7 @@ class AbilityManager {
             }
         }
 
-        // Apply visual size scaling to recent projectiles if oversize is active
-        if (this.sizeMultiplier > 1.0 && ["a2", "a4", "a5", "a6", "a7"].includes(id)) {
-            // Find projectiles just added (basic logic, applies to all current active but fine for simple effect)
-            this.projectiles.forEach(p => {
-                if (p.id === id && p.life > 0.9 * p.life) p.size *= this.sizeMultiplier;
-            });
-        }
     }
-
     chainLightning(game, fromEnemy, jumpsLeft, bingoDmgMult, stackCount) {
         if (jumpsLeft <= 0) return;
         let bestDist = 150 + (50 * (stackCount - 1)); // Jump distance scales with stacking

@@ -12,7 +12,11 @@
 </head>
 
 <div id="game-container">
-    <button id="mute-btn" class="mute-btn">🔊</button>
+    <div class="bottom-right-controls">
+        <button id="tutorial-btn" class="icon-btn" title="遊び方">❓</button>
+        <a id="x-link-btn" href="https://x.com/potatogamekun" target="_blank" class="icon-btn" title="開発者のX">𝕏</a>
+        <button id="mute-btn" class="icon-btn" title="ミュート切替">🔊</button>
+    </div>
     <!-- 3x3 Ability Selection Screen -->
     <div id="selection-screen" class="screen">
         <h1>私を構成する9つの能力</h1>
@@ -28,10 +32,29 @@
             </div>
         </div>
 
-        <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <div class="action-buttons">
             <button id="auto-select-btn">おまかせ</button>
             <button id="reset-btn">クリア</button>
             <button id="start-btn" disabled>9つの能力を選択してください</button>
+        </div>
+        <div class="footer">
+            作：塩ポテト君<br>
+            ※画像やコード等の一部生成にAIを使用しています。
+        </div>
+    </div>
+
+    <!-- Tutorial Modal -->
+    <div id="tutorial-modal" class="screen hidden" style="background: rgba(0,0,0,0.8); z-index: 200;">
+        <div
+            style="background: var(--bg-color); padding: 30px; border-radius: 10px; max-width: 500px; width: 90%; text-align: left; border: 1px solid var(--glass-border);">
+            <h2 style="text-align: center;">遊び方</h2>
+            <ul style="line-height: 1.8; padding-left: 20px; margin-bottom: 20px;">
+                <li>27種類の能力から9つを選んでスロットに配置します。</li>
+                <li>同じ色の能力を縦・横・斜めに3つ揃えると「ビンゴ」となり、追加のボーナスが発動します。</li>
+                <li>同じ能力は最大3つまで重複して配置でき、重ねることで効果が強力になります。</li>
+                <li>配置が決まったら「スタート」を押し、どこまで生き残れるか挑戦しましょう！</li>
+            </ul>
+            <button id="close-tutorial-btn" style="width: 100%;">閉じる</button>
         </div>
     </div>
 

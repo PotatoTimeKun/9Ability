@@ -7,7 +7,7 @@ class Player {
         this.maxHp = 50;
         this.level = 1;
         this.xp = 0;
-        this.maxXp = 10;
+        this.maxXp = 20;
         this.invulnerableTime = 0;
 
         this.targetX = x;
