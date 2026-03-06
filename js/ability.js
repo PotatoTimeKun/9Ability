@@ -284,17 +284,21 @@ class AbilityManager {
                         if (p.hitSet.has(enemy)) continue;
                         p.hitSet.add(enemy);
 
-                        let finalDamage = p.damage;
+                        let finalDamage = Number(p.damage) || 0;
                         if (this.critChance && Math.random() < this.critChance) {
                             finalDamage *= 2;
                             game.createFloatingText("Cri!", enemy.x, enemy.y - 20, "#f1c40f");
                         }
-                        enemy.hp -= finalDamage;
+                        if (!isNaN(finalDamage) && finalDamage > 0) {
+                            enemy.hp -= finalDamage;
+                        }
                         hit = true;
 
                         // On hit triggers
                         if (p.id === "a7") { // Chain lightning jump
-                            this.chainLightning(game, enemy, p.pierce, p.bingoDmgMult, p.stackCount); // Pass pierce as jumpsLeft
+                            let bingoMult = Number(1.0 + (this.bingoBonuses.attack * 0.1)) || 1.0;
+                            let stCount = Number(p.stackCount) || this.getAbilityCount("a7") || 1;
+                            this.chainLightning(game, enemy, p.pierce, bingoMult, stCount); // Pass pierce as jumpsLeft
                         }
                         if (this.getAbilityCount("a8") > 0) { // Deadly burst checks on kill in game.js usually, but we can flag it
                             enemy.deadlyBurstFlag = true;
@@ -449,20 +453,26 @@ class AbilityManager {
 
     }
     chainLightning(game, fromEnemy, jumpsLeft, bingoDmgMult, stackCount) {
-        if (jumpsLeft <= 0) return;
-        let bestDist = 150 + (50 * (stackCount - 1)); // Jump distance scales with stacking
+        if (jumpsLeft <= 0 || !fromEnemy) return;
+
+        let validStack = Number(stackCount) || 1;
+        let validMult = Number(bingoDmgMult) || 1.0;
+        let bestDist = 150 + (50 * (validStack - 1)); // Jump distance scales with stacking
         let target = null;
         game.enemies.forEach(e => {
-            if (e !== fromEnemy && e.hp > 0) {
+            if (e && e !== fromEnemy && e.hp > 0 && !isNaN(e.hp)) {
                 let d = Math.hypot(e.x - fromEnemy.x, e.y - fromEnemy.y);
-                if (d < bestDist) { bestDist = d; target = e; }
+                if (!isNaN(d) && d < bestDist) { bestDist = d; target = e; }
             }
         });
 
         if (target) {
             game.visualEffects.push(new VisualEffect("lightning", fromEnemy.x, fromEnemy.y, 0.2, target.x, target.y));
-            target.hp -= (25 * stackCount) * bingoDmgMult;
-            this.chainLightning(game, target, jumpsLeft - 1, bingoDmgMult, stackCount);
+            let jumpDmg = (35 * validStack) * validMult;
+            if (!isNaN(jumpDmg) && jumpDmg > 0) {
+                target.hp -= jumpDmg;
+            }
+            this.chainLightning(game, target, jumpsLeft - 1, validMult, validStack);
         }
     }
 
