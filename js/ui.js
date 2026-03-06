@@ -24,11 +24,12 @@ class UI {
         this.restartBtn = document.getElementById("restart-btn");
         this.shareBtn = document.getElementById("share-btn");
         this.autoSelectBtn = document.getElementById("auto-select-btn");
+        this.resetBtn = document.getElementById("reset-btn");
         this.downloadBtn = document.getElementById("download-btn");
 
         if (this.restartBtn) {
             this.restartBtn.addEventListener("click", () => {
-                location.reload(); // Simple restart
+                location.href = window.location.pathname; // Restart without query args normally
             });
         }
 
@@ -40,11 +41,16 @@ class UI {
             this.autoSelectBtn.addEventListener("click", () => this.autoSelectAbilities());
         }
 
+        if (this.resetBtn) {
+            this.resetBtn.addEventListener("click", () => this.resetAbilities());
+        }
+
         if (this.downloadBtn) {
             this.downloadBtn.addEventListener("click", () => this.downloadResultImage());
         }
 
         this.initAbilitySelection();
+        this.parseQueryStringBuild();
     }
 
     showSelectionScreen() {
@@ -79,11 +85,36 @@ class UI {
             });
         }
 
-        // Generate summary of picked abilities for sharing
-        this.selectedAbilityNames = this.gridSlots.filter(a => a !== null).map(a => a.name).join("、");
+        // Generate build string and share URL
+        const buildIds = this.gridSlots.map(a => a ? a.id : "").join(".");
+        const shareUrl = window.location.origin + window.location.pathname + "?b=" + buildIds;
 
         // Shortened tweet text with corrected title
-        this.shareText = `【私を構成する9つの能力】\nステージ${this.game.stage}到達！\n\n#私を構成する9つの能力 \nhttps://potatotimekun.github.io/9Ability/`;
+        this.shareText = `【私を構成する9つの能力】\nステージ${this.game.stage}到達！\n\n#私を構成する9つの能力 \n${shareUrl}`;
+    }
+
+    resetAbilities() {
+        this.gridSlots.fill(null);
+        this.updateGridVisuals();
+        this.checkStartCondition();
+    }
+
+    parseQueryStringBuild() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const bParams = urlParams.get('b');
+        if (bParams) {
+            const ids = bParams.split('.');
+            for (let i = 0; i < 9 && i < ids.length; i++) {
+                if (ids[i]) {
+                    const ability = ABILITIES_DATA.find(a => a.id === ids[i]);
+                    if (ability && this.canAddAbility(ability, i)) {
+                        this.gridSlots[i] = ability;
+                    }
+                }
+            }
+            this.updateGridVisuals();
+            this.checkStartCondition();
+        }
     }
 
     autoSelectAbilities() {

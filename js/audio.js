@@ -9,7 +9,9 @@ class AudioManager {
         this.seGameover = document.getElementById('se-gameover');
         this.seSlash = document.getElementById('se-slash');
 
-        this.isMuted = false;
+        // Load saved mute state
+        const savedMute = localStorage.getItem('9ability_muted');
+        this.isMuted = savedMute === 'true';
         this.setVolume(this.isMuted ? 0 : 0.4);
 
         this.muteBtn = document.getElementById('mute-btn');
@@ -20,6 +22,7 @@ class AudioManager {
 
     toggleMute() {
         this.isMuted = !this.isMuted;
+        localStorage.setItem('9ability_muted', this.isMuted);
         this.setVolume(this.isMuted ? 0 : 0.4);
         if (this.muteBtn) {
             this.muteBtn.innerText = this.isMuted ? '🔇' : '🔊';
