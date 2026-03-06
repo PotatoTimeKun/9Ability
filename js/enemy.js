@@ -3,9 +3,10 @@ class Enemy {
         this.x = x;
         this.y = y;
         this.type = type; // "triangle", "circle", "square", etc.
-        this.hp = 20; // Increased base HP (was 10)
+        this.hp = 30; // Increased base HP (was 20)
         this.speed = 65; // Increased base speed (was 50)
         this.size = 15;
+        this.damage = 15; // Set base damage so it can scale
     }
 
     update(dt, player, game) {
@@ -18,9 +19,21 @@ class Enemy {
         // Speed decay handling (Poison a9 / Clock Down s2)
         let currentSpeed = this.speed * (this.speedDecay || 1.0);
 
-        // Simple chase logic
-        const dx = player.x - this.x;
-        const dy = player.y - this.y;
+        // Simple chase logic optionally target decoy
+        let targetX = player.x;
+        let targetY = player.y;
+        if (game && game.abilities && game.abilities.decoy) {
+            let decoy = game.abilities.decoy;
+            let decoyDist = Math.hypot(this.x - decoy.x, this.y - decoy.y);
+            let playerDist = Math.hypot(this.x - player.x, this.y - player.y);
+            if (decoyDist < playerDist + 100) { // Prefer decoy
+                targetX = decoy.x;
+                targetY = decoy.y;
+            }
+        }
+
+        const dx = targetX - this.x;
+        const dy = targetY - this.y;
         const dist = Math.hypot(dx, dy);
 
         if (dist > 0) {

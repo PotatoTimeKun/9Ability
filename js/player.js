@@ -2,9 +2,9 @@ class Player {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.size = 30;
-        this.hp = 100;
-        this.maxHp = 100;
+        this.size = 20;
+        this.hp = 50;
+        this.maxHp = 50;
         this.level = 1;
         this.xp = 0;
         this.maxXp = 10;
@@ -12,7 +12,7 @@ class Player {
 
         this.targetX = x;
         this.targetY = y;
-        this.speed = 200; // pixels per second
+        this.speed = 150; // pixels per second
 
         // Mouse follow setup
         window.addEventListener("mousemove", (e) => {
@@ -58,11 +58,26 @@ class Player {
     takeDamage(amount, game) {
         if (this.invulnerableTime > 0) return;
 
-        // Avoidance chance (d5)
-        if (game && game.abilities && game.abilities.hasAbility("d5")) {
-            if (Math.random() < 0.2) { // 20% chance to avoid
-                game.createFloatingText("MISS", this.x, this.y - 20, "#fff");
+        // Avoidance chance (d5) & Shield (d1)
+        if (game && game.abilities) {
+            if (game.abilities.hasShield) {
+                game.abilities.shieldStacks--;
+                if (game.abilities.shieldStacks <= 0) {
+                    game.abilities.hasShield = false;
+                    game.abilities.shieldStacks = 0;
+                }
+                game.createFloatingText("SHIELD! (" + game.abilities.shieldStacks + " left)", this.x, this.y - 20, "#82ccdd");
+                this.invulnerableTime = 1.0; // Invulnerable for 1s after shield break
                 return;
+            }
+
+            let d5Count = game.abilities.getAbilityCount("d5");
+            if (d5Count > 0) {
+                let dodgeChance = 1.0 - Math.pow(0.8, d5Count); // 20% independent chance per stack
+                if (Math.random() < dodgeChance) {
+                    game.createFloatingText("MISS", this.x, this.y - 20, "#fff");
+                    return;
+                }
             }
         }
 
@@ -88,19 +103,39 @@ class Player {
         setTimeout(() => gameScreen.classList.remove("shake"), 200);
     }
 
-    addXp(amount) {
-        this.xp += amount;
+    addXp(amount, game) {
+        let multiplier = 1.0;
+        if (game && game.abilities) {
+            let s5Count = game.abilities.getAbilityCount("s5");
+            if (s5Count > 0) {
+                multiplier *= Math.pow(2, s5Count); // True double score stacking
+            }
+        }
+        this.xp += Math.floor(amount * multiplier);
         if (this.xp >= this.maxXp) {
-            this.levelUp();
+            this.levelUp(game);
         }
     }
 
-    levelUp() {
-        this.xp -= this.maxXp;
+    levelUp(game) {
         this.level++;
-        this.maxXp = Math.floor(this.maxXp * 1.5);
-        this.maxHp += 10;
-        this.hp = this.maxHp;
+        this.xp -= this.maxXp;
+        // Level up gets significantly slower
+        this.maxXp = Math.floor(this.maxXp * 1.8);
+
+        // HP boost (d9) mechanics
+        let hpBoost = 2; // Reduced base HP increase per level
+        if (game && game.abilities) {
+            let d9Count = game.abilities.getAbilityCount("d9");
+            if (d9Count > 0) {
+                hpBoost += (8 * d9Count); // Reduced bonus
+            }
+            if (game.abilities.bingoBonuses && game.abilities.bingoBonuses.defense > 0) {
+                hpBoost += 3; // Bingo passive defense
+            }
+        }
+        this.maxHp += hpBoost;
+        this.hp = Math.min(this.maxHp, this.hp + hpBoost); // Only heal by the boost amount, not to full
 
         // TODO: Ability selection or upgrade
     }

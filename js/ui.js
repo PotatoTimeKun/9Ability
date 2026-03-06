@@ -82,18 +82,8 @@ class UI {
         // Generate summary of picked abilities for sharing
         this.selectedAbilityNames = this.gridSlots.filter(a => a !== null).map(a => a.name).join("、");
 
-        let bingoMsg = [];
-        if (this.game.abilities && this.game.abilities.bingoBonuses) {
-            let bb = this.game.abilities.bingoBonuses;
-            if (bb.attack > 0) bingoMsg.push(`攻撃x${bb.attack}`);
-            if (bb.defense > 0) bingoMsg.push(`防御x${bb.defense}`);
-            if (bb.special > 0) bingoMsg.push(`特殊x${bb.special}`);
-        }
-
-        let bingoText = bingoMsg.length > 0 ? `ビンゴ：${bingoMsg.join(" / ")}` : "";
-
         // Shortened tweet text with corrected title
-        this.shareText = `【私を構成する9つの能力】\nステージ${this.game.stage}到達！\n${bingoText}\n\n#私を構成する9つの能力 #ゲーム開発`;
+        this.shareText = `【私を構成する9つの能力】\nステージ${this.game.stage}到達！\n\n#私を構成する9つの能力 \nhttps://potatotimekun.github.io/9Ability/`;
     }
 
     autoSelectAbilities() {
@@ -235,14 +225,26 @@ class UI {
         });
     }
 
+    canAddAbility(ability, ignoreIndex = -1) {
+        let count = 0;
+        for (let i = 0; i < 9; i++) {
+            if (i !== ignoreIndex && this.gridSlots[i] && this.gridSlots[i].id === ability.id) {
+                count++;
+            }
+        }
+        return count < 3;
+    }
+
     handleAbilityClick(ability) {
         if (this.selectedGridSlot !== null) {
+            if (!this.canAddAbility(ability, this.selectedGridSlot)) return;
             this.setGridSlot(this.selectedGridSlot, ability);
             this.selectedGridSlot = null;
             this.updateGridVisuals();
             return;
         }
 
+        if (!this.canAddAbility(ability)) return;
         // Find first empty slot and assign if available
         const emptyIndex = this.gridSlots.findIndex(a => a === null);
         if (emptyIndex !== -1) {
@@ -292,6 +294,7 @@ class UI {
 
         try {
             const ability = JSON.parse(data);
+            if (!this.canAddAbility(ability, index)) return;
             this.setGridSlot(index, ability);
         } catch (err) {
             console.error("Drop error", err);
@@ -299,12 +302,6 @@ class UI {
     }
 
     setGridSlot(index, ability) {
-        // Remove from previous slot if it was already selected
-        const existingIndex = this.gridSlots.findIndex(a => a && a.id === ability.id);
-        if (existingIndex !== -1) {
-            this.clearGridSlot(existingIndex);
-        }
-
         this.gridSlots[index] = ability;
         this.updateGridVisuals();
         this.checkStartCondition();
@@ -320,8 +317,7 @@ class UI {
         const slots = this.abilityGrid.children;
         const listItems = this.abilityList.children;
 
-        // Reset all list items
-        Array.from(listItems).forEach(item => item.classList.remove("selected"));
+        // Removed resetting all items selected class here
 
         // Evaluate bingos for UI
         const lines = [
@@ -379,9 +375,7 @@ class UI {
                     this.handleGridClick(i);
                 };
 
-                // Mark in list as selected
-                const listItem = this.abilityList.querySelector(`[data-id="${ability.id}"]`);
-                if (listItem) listItem.classList.add("selected");
+                // (We no longer mark in list as selected, allowing multiples)
             } else {
                 slot.innerHTML = "";
                 slot.classList.remove("filled");

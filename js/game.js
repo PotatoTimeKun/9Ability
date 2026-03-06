@@ -13,9 +13,10 @@ class Game {
         this.enemies = [];
         this.particles = [];
         this.floatingTexts = [];
+        this.visualEffects = [];
 
         this.stage = 1;
-        this.timeRemaining = 60; // 1 minute per stage
+        this.timeRemaining = 60; // Default, might be updated on start
         this.spawnTimer = 0;
         this.spawnInterval = 1.0;
         this.bossActive = false;
@@ -39,6 +40,8 @@ class Game {
         this.player = new Player(this.canvas.width / 2, this.canvas.height / 2);
         this.abilities = new AbilityManager(this.player);
         this.abilities.setAbilities(this.ui.gridSlots);
+        let s8Count = this.abilities.getAbilityCount("s8");
+        this.timeRemaining = 60 + (30 * s8Count); // More Time (s8)
         this.isRunning = true;
         this.audio.playBGM();
         this.lastTime = performance.now();
@@ -91,12 +94,16 @@ class Game {
                 const dist = Math.hypot(dx, dy);
                 if (dist < enemy.size + this.player.size / 2) {
                     // Player takes damage
-                    this.player.takeDamage(10 * this.stage, this);
+                    let dmg = (enemy.damage || 15) * this.stage;
+                    this.player.takeDamage(dmg, this);
 
                     // Basic knockback, enhanced by d6
                     let knockbackForce = 30;
-                    if (this.abilities && this.abilities.hasAbility("d6")) {
-                        knockbackForce = 150; // Stronger pushback
+                    if (this.abilities) {
+                        let d6Count = this.abilities.getAbilityCount("d6");
+                        if (d6Count > 0) {
+                            knockbackForce = 30 + (120 * d6Count); // Stronger pushback per stack
+                        }
                     }
                     enemy.x += dx / dist * knockbackForce;
                     enemy.y += dy / dist * knockbackForce;
@@ -106,7 +113,30 @@ class Game {
             if (enemy.hp <= 0) {
                 let xpGained = enemy.xpValue || 1;
                 if (this.abilities && this.abilities.doubleXp) xpGained *= 2;
-                this.player.addXp(xpGained);
+                this.player.addXp(xpGained, this); // Pass this reference for levelUp hooks
+
+                // Life Eater (d8)
+                if (this.abilities) {
+                    let d8Count = this.abilities.getAbilityCount("d8");
+                    if (d8Count > 0 && this.player.hp < this.player.maxHp) {
+                        // Healing is much more strict (chance based or very small fraction)
+                        if (Math.random() < 0.3) {
+                            this.player.hp = Math.min(this.player.maxHp, this.player.hp + (1 * d8Count));
+                        }
+                    }
+                }
+
+                // Deadly Burst (a8)
+                if (this.abilities) {
+                    let a8Count = this.abilities.getAbilityCount("a8");
+                    if (a8Count > 0) {
+                        let radius = 80 + (20 * (a8Count - 1));
+                        let dmg = 30 * a8Count;
+                        this.visualEffects.push(new VisualEffect("shockwave", enemy.x, enemy.y, 0.2, radius, "#ff6b81"));
+                        this.abilities.checkDamageRadius(this, enemy.x, enemy.y, radius, dmg, null);
+                    }
+                }
+
                 this.createParticles(enemy.x, enemy.y, enemy.color || "#ff4757", 10);
 
                 // If this is a boss
@@ -126,6 +156,14 @@ class Game {
             }
         }
 
+        // Update visual effects
+        for (let i = this.visualEffects.length - 1; i >= 0; i--) {
+            this.visualEffects[i].update(dt);
+            if (this.visualEffects[i].life <= 0) {
+                this.visualEffects.splice(i, 1);
+            }
+        }
+
         // Update floating texts
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
             this.floatingTexts[i].update(dt);
@@ -141,8 +179,9 @@ class Game {
     handleSpawning(dt) {
         this.spawnTimer += dt;
         // Spawn interval gets shorter as time remaining decreases and stage increases
-        // Baseline 1.0 down to 0.1 at max difficulty.
-        const currentInterval = Math.max(0.1, this.spawnInterval - (this.stage * 0.15) - ((60 - this.timeRemaining) / 60 * 0.6));
+        let s8Count = (this.abilities) ? this.abilities.getAbilityCount("s8") : 0;
+        let maxTime = 60 + (30 * s8Count);
+        const currentInterval = Math.max(0.1, this.spawnInterval - (this.stage * 0.15) - ((maxTime - this.timeRemaining) / maxTime * 0.6));
 
         if (this.spawnTimer >= currentInterval) {
             this.spawnTimer = 0;
@@ -171,6 +210,18 @@ class Game {
         enemy.speed *= (1 + (this.stage - 1) * 0.2);
         enemy.xpValue = 1 + Math.floor((this.stage - 1) * 0.8);
 
+        // Hard Mode (s9)
+        if (this.abilities) {
+            let s9Count = this.abilities.getAbilityCount("s9");
+            if (s9Count > 0) {
+                let mult = Math.pow(2, s9Count); // 2x per stack
+                enemy.hp *= mult;
+                enemy.speed *= mult;
+                enemy.damage = (enemy.damage || 10) * mult;
+                enemy.xpValue *= mult;
+            }
+        }
+
         this.enemies.push(enemy);
     }
 
@@ -184,7 +235,22 @@ class Game {
         boss.hp = 1000 * this.stage;
         boss.maxHp = boss.hp;
         boss.speed = 40 + (this.stage * 10);
+        boss.damage = 20 * this.stage;
         boss.xpValue = 100 * this.stage;
+
+        // Hard Mode (s9)
+        if (this.abilities) {
+            let s9Count = this.abilities.getAbilityCount("s9");
+            if (s9Count > 0) {
+                let mult = Math.pow(2, s9Count); // 2x per stack
+                boss.hp *= mult;
+                boss.maxHp *= mult;
+                boss.speed *= mult;
+                boss.damage *= mult;
+                boss.xpValue *= mult;
+            }
+        }
+
         this.enemies.push(boss);
 
         this.createFloatingText("WARNING: BOSS APPROACHING", this.canvas.width / 2, this.canvas.height / 2 - 50, "#ff4757");
@@ -194,11 +260,12 @@ class Game {
         if (this.audio) this.audio.playSE('win');
         this.bossActive = false;
         this.stage++;
-        this.timeRemaining = 60; // Reset for next stage
+        let s8Count = this.abilities.getAbilityCount("s8");
+        this.timeRemaining = 60 + (30 * s8Count); // Reset for next stage considering More Time
 
         // Small heal on stage clear
         if (this.player) {
-            this.player.hp = Math.min(this.player.maxHp, this.player.hp + 50);
+            this.player.hp = Math.min(this.player.maxHp, this.player.hp + 20); // Reduced heal from 50 to 20
         }
 
         this.createFloatingText("STAGE CLEAR!", this.canvas.width / 2, this.canvas.height / 2, "#2ed573");
@@ -241,8 +308,10 @@ class Game {
         }
 
         if (this.player) {
-            this.player.draw(this.ctx);
+            // Draw abilities/projectiles beneath the player
             if (this.abilities) this.abilities.draw(this.ctx);
+            // Draw player on top
+            this.player.draw(this.ctx);
         }
 
         for (let enemy of this.enemies) {
@@ -251,6 +320,10 @@ class Game {
 
         for (let particle of this.particles) {
             particle.draw(this.ctx);
+        }
+
+        for (let effect of this.visualEffects) {
+            effect.draw(this.ctx);
         }
 
         for (let ft of this.floatingTexts) {
@@ -286,6 +359,55 @@ class FloatingText {
         ctx.restore();
     }
 }
+
+// Simple visual effects
+class VisualEffect {
+    constructor(type, x, y, duration, ...args) {
+        this.type = type;
+        this.x = x;
+        this.y = y;
+        this.life = duration;
+        this.maxLife = duration;
+        this.args = args; // Extra parameters
+    }
+
+    update(dt) {
+        this.life -= dt;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        const progress = 1.0 - (this.life / this.maxLife);
+
+        if (this.type === "shockwave") {
+            const radius = this.args[0];
+            const color = this.args[1] || "#ff4757";
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, radius * Math.easeOutQuad(progress), 0, Math.PI * 2);
+            ctx.strokeStyle = color;
+            ctx.globalAlpha = 1.0 - progress;
+            ctx.lineWidth = 5;
+            ctx.stroke();
+        } else if (this.type === "lightning") {
+            const targetX = this.args[0];
+            const targetY = this.args[1];
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            // Very simple zigzag
+            const mx = (this.x + targetX) / 2 + (Math.random() - 0.5) * 30;
+            const my = (this.y + targetY) / 2 + (Math.random() - 0.5) * 30;
+            ctx.lineTo(mx, my);
+            ctx.lineTo(targetX, targetY);
+            ctx.strokeStyle = "#feca57";
+            ctx.lineWidth = 2 + (2 * this.life / this.maxLife); // thicker at start
+            ctx.globalAlpha = this.life / this.maxLife;
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+}
+
+Math.easeOutQuad = function (t) { return t * (2 - t); };
 
 class Particle {
     constructor(x, y, color) {
