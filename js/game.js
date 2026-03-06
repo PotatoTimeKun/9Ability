@@ -140,7 +140,7 @@ class Game {
                 this.createParticles(enemy.x, enemy.y, enemy.color || "#ff4757", 10);
 
                 // If this is a boss
-                if (enemy.type === "boss") {
+                if (enemy.type && enemy.type.startsWith("boss")) {
                     this.bossDefeated();
                 }
 
@@ -231,12 +231,20 @@ class Game {
         this.enemies.forEach(e => this.createParticles(e.x, e.y, e.color, 5));
         this.enemies = [];
 
-        const boss = new Boss(this.canvas.width / 2, -100, "boss");
-        boss.hp = 1000 * this.stage;
+        const bossTypes = ["boss-rusher", "boss-shooter", "boss-summoner"];
+        const selectedBossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];
+
+        const boss = new Boss(this.canvas.width / 2, -100, selectedBossType);
+
+        // Multipliers for scaling with stage
+        let hpMult = 1 + (this.stage - 1) * 0.8;
+        let speedMult = 1 + (this.stage - 1) * 0.2;
+
+        boss.hp = boss.hp * hpMult;
         boss.maxHp = boss.hp;
-        boss.speed = 40 + (this.stage * 10);
-        boss.damage = 20 * this.stage;
-        boss.xpValue = 100 * this.stage;
+        boss.speed = boss.speed * speedMult;
+        boss.damage = boss.damage * (1 + (this.stage - 1) * 0.5);
+        boss.xpValue = boss.xpValue * this.stage;
 
         // Hard Mode (s9)
         if (this.abilities) {

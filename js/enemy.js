@@ -2,10 +2,30 @@ class Enemy {
     constructor(x, y, type) {
         this.x = x;
         this.y = y;
-        this.type = type; // "triangle", "circle", "square", etc.
-        this.hp = 45; // Increased base HP (was 30)
-        this.speed = 65; // Increased base speed (was 50)
-        this.size = 15;
+        this.type = type; // "triangle", "circle", "square"
+
+        // Base stats
+        let baseHp = 45;
+        let baseSpeed = 65;
+
+        // Apply type modifiers
+        if (type === "triangle") {
+            this.hp = baseHp * 0.6;
+            this.speed = baseSpeed * 1.5;
+            this.color = "#eccc68"; // Fast/Yellow
+            this.size = 12;
+        } else if (type === "square") {
+            this.hp = baseHp * 1.6;
+            this.speed = baseSpeed * 0.6;
+            this.color = "#70a1ff"; // Tank/Blue
+            this.size = 18;
+        } else { // "circle"
+            this.hp = baseHp;
+            this.speed = baseSpeed;
+            this.color = "#ff4757"; // Balanced/Red
+            this.size = 15;
+        }
+
         this.damage = 15; // Set base damage so it can scale
     }
 
@@ -45,7 +65,7 @@ class Enemy {
     draw(ctx) {
         ctx.save();
         ctx.translate(this.x, this.y);
-        ctx.fillStyle = "#ff4757"; // red enemies
+        ctx.fillStyle = this.color;
 
         // Draw shape based on type
         ctx.beginPath();
@@ -68,9 +88,33 @@ class Boss extends Enemy {
     constructor(x, y, type) {
         super(x, y, type);
         this.size = 40;
-        this.color = "#9b59b6";
 
-        this.abilityTimer = 3.0; // Seconds between boss special attacks
+        // Base boss stats
+        let baseHp = 1000;
+        let baseSpeed = 40;
+        this.damage = 20;
+        this.xpValue = 100;
+
+        // Boss Variations
+        if (type === "boss-rusher") {
+            this.hp = baseHp * 0.8;
+            this.speed = baseSpeed * 1.5;
+            this.color = "#eccc68"; // Fast/Yellow
+            this.abilityCooldown = 2.5;
+        } else if (type === "boss-summoner") {
+            this.hp = baseHp * 1.5;
+            this.speed = baseSpeed * 0.5;
+            this.color = "#70a1ff"; // Tank/Blue
+            this.abilityCooldown = 4.0;
+        } else { // "boss-shooter" or default
+            this.type = "boss-shooter";
+            this.hp = baseHp;
+            this.speed = baseSpeed;
+            this.color = "#9b59b6"; // Shooter/Purple
+            this.abilityCooldown = 3.0;
+        }
+
+        this.abilityTimer = this.abilityCooldown;
         this.state = "chase"; // "chase", "ability", "charge"
         this.chargeTarget = null;
     }
@@ -109,31 +153,41 @@ class Boss extends Enemy {
                 this.y += (dy / dist) * currentSpeed * 3 * dt;
             } else {
                 this.state = "chase";
-                this.abilityTimer = 4.0;
+                this.abilityTimer = this.abilityCooldown;
             }
         }
     }
 
     chooseAbility(player, game) {
-        let rand = Math.random();
-        if (rand < 0.5) {
-            // Grid Lock (Spawn projectiles that don't move or move in a grid)
-            this.state = "chase";
-            this.abilityTimer = 3.0;
-            game.createFloatingText("GRID LOCK", this.x, this.y - 40, "#fff");
-
-            // Note: simple implementation is dropping hazard zones
-            // For now, let's just do a burst of projectiles
-            for (let i = 0; i < 8; i++) {
-                let angle = (Math.PI * 2 / 8) * i;
-                game.enemies.push(new BossProjectile(this.x, this.y, angle, this.hp * 0.05));
-            }
-        } else {
-            // Charge / Dash
+        if (this.type === "boss-rusher") {
+            // Only Charge / Dash
             this.state = "charge";
             this.chargeTarget = { x: player.x, y: player.y };
             game.createFloatingText("DASH!", this.x, this.y - 40, "#fff");
-            // Highlight path could be added to particles
+        } else if (this.type === "boss-summoner") {
+            this.state = "chase";
+            this.abilityTimer = this.abilityCooldown;
+            game.createFloatingText("SUMMON", this.x, this.y - 40, "#fff");
+
+            // Spawn regular enemies
+            for (let i = 0; i < 3; i++) {
+                const types = ["triangle", "circle", "square"];
+                const eType = types[Math.floor(Math.random() * types.length)];
+                let enemy = new Enemy(this.x + (Math.random() - 0.5) * 100, this.y + (Math.random() - 0.5) * 100, eType);
+                enemy.hp *= (1 + (game.stage - 1) * 0.8);
+                enemy.speed *= (1 + (game.stage - 1) * 0.2);
+                game.enemies.push(enemy);
+            }
+        } else {
+            // Shooter: Burst of projectiles
+            this.state = "chase";
+            this.abilityTimer = this.abilityCooldown;
+            game.createFloatingText("BULLET HELL", this.x, this.y - 40, "#fff");
+
+            for (let i = 0; i < 12; i++) {
+                let angle = (Math.PI * 2 / 12) * i;
+                game.enemies.push(new BossProjectile(this.x, this.y, angle, this.hp * 0.05));
+            }
         }
     }
 
@@ -142,20 +196,27 @@ class Boss extends Enemy {
         ctx.translate(this.x, this.y);
         ctx.fillStyle = this.color;
 
-        // Big complex shape
         ctx.beginPath();
-        ctx.moveTo(0, -this.size);
-        ctx.lineTo(this.size, 0);
-        ctx.lineTo(0, this.size);
-        ctx.lineTo(-this.size, 0);
+        if (this.type === "boss-rusher") {
+            // big triangle
+            ctx.moveTo(0, -this.size * 1.2);
+            ctx.lineTo(this.size * 1.2, this.size * 1.2);
+            ctx.lineTo(-this.size * 1.2, this.size * 1.2);
+        } else if (this.type === "boss-summoner") {
+            // big square
+            ctx.rect(-this.size, -this.size, this.size * 2, this.size * 2);
+        } else {
+            // big circle
+            ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+        }
         ctx.closePath();
         ctx.fill();
 
         // HP Bar
         ctx.fillStyle = "#333";
-        ctx.fillRect(-this.size, -this.size - 15, this.size * 2, 8);
+        ctx.fillRect(-this.size, -this.size - 25, this.size * 2, 8);
         ctx.fillStyle = "#e74c3c";
-        ctx.fillRect(-this.size, -this.size - 15, (this.size * 2) * (this.hp / this.maxHp), 8);
+        ctx.fillRect(-this.size, -this.size - 25, (this.size * 2) * (this.hp / this.maxHp), 8);
 
         ctx.restore();
     }
