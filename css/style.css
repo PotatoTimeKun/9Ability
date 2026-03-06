@@ -270,6 +270,13 @@ canvas {
     border-style: solid;
 }
 
+.grid-cell.selected-slot {
+    border-color: #f1c40f !important;
+    box-shadow: 0 0 15px rgba(241, 196, 15, 0.5);
+    transform: scale(1.05);
+    z-index: 10;
+}
+
 .list-container {
     width: 350px;
     height: 100%;
@@ -379,4 +386,59 @@ canvas {
 
 .grid-cell:hover .remove-btn {
     opacity: 1;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .selection-container {
+        flex-direction: column;
+        align-items: center;
+        height: auto;
+        gap: 20px;
+    }
+
+    .list-container {
+        width: 100%;
+        max-width: 400px;
+        height: 35vh;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .subtitle {
+        font-size: 0.8rem;
+        margin-bottom: 15px;
+    }
+
+    .grid {
+        grid-template-columns: repeat(3, 80px);
+        grid-template-rows: repeat(3, 80px);
+        gap: 8px;
+    }
+
+    .remove-btn {
+        opacity: 1;
+        /* Always show close button on mobile, instead of hover */
+        top: -8px;
+        right: -8px;
+        width: 24px;
+        height: 24px;
+        font-size: 14px;
+    }
+
+    #hud {
+        padding: 10px;
+    }
+
+    .hud-top {
+        font-size: 1.2rem;
+    }
+
+    .ability-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 1rem;
+    }
 }

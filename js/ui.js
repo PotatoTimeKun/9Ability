@@ -8,6 +8,7 @@ class UI {
         this.abilityGrid = document.getElementById("ability-grid");
         this.abilityList = document.getElementById("ability-list");
         this.gridSlots = new Array(9).fill(null);
+        this.selectedGridSlot = null;
 
         this.startBtn.addEventListener("click", () => {
             this.game.start();
@@ -102,8 +103,49 @@ class UI {
                 `;
 
             item.addEventListener("dragstart", (e) => this.handleDragStart(e, ability));
+            item.addEventListener("click", () => this.handleAbilityClick(ability));
             this.abilityList.appendChild(item);
         });
+    }
+
+    handleAbilityClick(ability) {
+        if (this.selectedGridSlot !== null) {
+            this.setGridSlot(this.selectedGridSlot, ability);
+            this.selectedGridSlot = null;
+            this.updateGridVisuals();
+            return;
+        }
+
+        // Find first empty slot and assign if available
+        const emptyIndex = this.gridSlots.findIndex(a => a === null);
+        if (emptyIndex !== -1) {
+            this.setGridSlot(emptyIndex, ability);
+        }
+    }
+
+    handleGridClick(index) {
+        if (this.selectedGridSlot === null) {
+            // Nothing selected yet
+            if (this.gridSlots[index]) {
+                // Select this slot for moving/swapping
+                this.selectedGridSlot = index;
+                this.updateGridVisuals();
+            }
+        } else {
+            // Already selected a slot, swap or move
+            if (this.selectedGridSlot === index) {
+                // Clicked same slot -> deselect
+                this.selectedGridSlot = null;
+            } else {
+                // Swap
+                const temp = this.gridSlots[index];
+                this.gridSlots[index] = this.gridSlots[this.selectedGridSlot];
+                this.gridSlots[this.selectedGridSlot] = temp;
+                this.selectedGridSlot = null;
+            }
+            this.updateGridVisuals();
+            this.checkStartCondition();
+        }
     }
 
     handleDragStart(e, ability) {
@@ -158,6 +200,11 @@ class UI {
             const slot = slots[i];
             const ability = this.gridSlots[i];
 
+            slot.classList.remove("selected-slot");
+            if (i === this.selectedGridSlot) {
+                slot.classList.add("selected-slot");
+            }
+
             if (ability) {
                 slot.innerHTML = `
                         <div class="ability-icon attr-${ability.type}">${ability.icon}</div>
@@ -169,6 +216,12 @@ class UI {
                 slot.querySelector(".remove-btn").onclick = (e) => {
                     e.stopPropagation();
                     this.clearGridSlot(i);
+                    if (this.selectedGridSlot === i) this.selectedGridSlot = null;
+                };
+
+                // Click anywhere on cell to swap or select
+                slot.onclick = (e) => {
+                    this.handleGridClick(i);
                 };
 
                 // Mark in list as selected
@@ -177,6 +230,11 @@ class UI {
             } else {
                 slot.innerHTML = "";
                 slot.classList.remove("filled");
+
+                // Click on empty cell to select/swap
+                slot.onclick = (e) => {
+                    this.handleGridClick(i);
+                };
             }
         }
     }

@@ -25,6 +25,13 @@ class Player {
                 this.targetY = e.touches[0].clientY;
             }
         }, { passive: true });
+
+        window.addEventListener("touchstart", (e) => {
+            if (e.touches.length > 0) {
+                this.targetX = e.touches[0].clientX;
+                this.targetY = e.touches[0].clientY;
+            }
+        }, { passive: true });
     }
 
     update(dt, game) {
