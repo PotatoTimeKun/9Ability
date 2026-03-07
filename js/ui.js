@@ -31,6 +31,11 @@ class UI {
         this.tutorialModal = document.getElementById("tutorial-modal");
         this.closeTutorialBtn = document.getElementById("close-tutorial-btn");
 
+        this.rankingBtn = document.getElementById("ranking-btn");
+        this.rankingModal = document.getElementById("ranking-modal");
+        this.closeRankingBtn = document.getElementById("close-ranking-btn");
+        this.rankingList = document.getElementById("ranking-list");
+
         if (this.tutorialBtn) {
             this.tutorialBtn.addEventListener("click", () => {
                 this.tutorialModal.classList.remove("hidden");
@@ -39,6 +44,17 @@ class UI {
         if (this.closeTutorialBtn) {
             this.closeTutorialBtn.addEventListener("click", () => {
                 this.tutorialModal.classList.add("hidden");
+            });
+        }
+
+        if (this.rankingBtn) {
+            this.rankingBtn.addEventListener("click", () => {
+                this.showRankingModal();
+            });
+        }
+        if (this.closeRankingBtn) {
+            this.closeRankingBtn.addEventListener("click", () => {
+                this.rankingModal.classList.add("hidden");
             });
         }
 
@@ -68,6 +84,146 @@ class UI {
         this.parseQueryStringBuild();
     }
 
+    showRankingModal() {
+        this.rankingModal.classList.remove("hidden");
+        this.rankingList.innerHTML = '<div style="text-align: center; color: #aaa;">読み込み中...</div>';
+
+        if (typeof PlayFabService === 'undefined') {
+            this.rankingList.innerHTML = '<div style="text-align: center; color: var(--accent-red);">PlayFabサービスが見つかりません</div>';
+            return;
+        }
+
+        PlayFabService.getLeaderboard((leaderboard, error) => {
+            if (error) {
+                this.rankingList.innerHTML = '<div style="text-align: center; color: var(--accent-red);">ランキングの取得に失敗しました</div>';
+                return;
+            }
+
+            if (!leaderboard || leaderboard.length === 0) {
+                this.rankingList.innerHTML = '<div style="text-align: center; color: #aaa;">まだランキングデータがありません</div>';
+                return;
+            }
+
+            this.rankingList.innerHTML = "";
+            let playerInTop15 = false;
+
+            const renderEntry = (entry, isPlayerOutsideTop15 = false) => {
+                const isMe = (entry.PlayFabId === PlayFabService.playFabId);
+                if (isMe && !isPlayerOutsideTop15) {
+                    playerInTop15 = true;
+                }
+
+                const itemDiv = document.createElement("div");
+                itemDiv.className = "ranking-item";
+                if (isMe) {
+                    itemDiv.style.background = "rgba(46, 213, 115, 0.2)"; // Highlight color for current player
+                    itemDiv.style.border = "1px solid rgba(46, 213, 115, 0.5)";
+                }
+
+                const rankDiv = document.createElement("div");
+                rankDiv.className = "rank-info";
+                rankDiv.innerText = `${entry.Position + 1}位`;
+                if (isMe) {
+                    rankDiv.innerText += "\n(あなた)";
+                    rankDiv.style.fontSize = "0.9rem";
+                    rankDiv.style.width = "80px";
+                }
+
+                const scoreDiv = document.createElement("div");
+                scoreDiv.className = "score-info";
+                scoreDiv.innerText = `Stage ${entry.StatValue}`;
+
+                const abilitiesContainer = document.createElement("div");
+                abilitiesContainer.className = "abilities-mini-grid";
+                // Initially empty, will populate when UserData loads
+
+                const copyBtn = document.createElement("button");
+                copyBtn.className = "copy-btn";
+                copyBtn.innerText = "コピー";
+                copyBtn.disabled = true; // Disable until data loads
+
+                // Fetch UserData for this player
+                PlayFabService.getUserData(entry.PlayFabId, (userData, udError) => {
+                    if (!udError && userData && userData.Abilities) {
+                        try {
+                            const abilityIds = JSON.parse(userData.Abilities.Value);
+                            let loadedGridSlots = new Array(9).fill(null);
+
+                            abilityIds.forEach((id, idx) => {
+                                if (id && idx < 9) {
+                                    const a = ABILITIES_DATA.find(ab => ab.id === id);
+                                    if (a) {
+                                        loadedGridSlots[idx] = a;
+                                        const miniIcon = document.createElement("div");
+                                        miniIcon.className = `mini-icon attr-${a.type}`;
+                                        miniIcon.innerText = a.icon;
+                                        miniIcon.title = a.name;
+                                        abilitiesContainer.appendChild(miniIcon);
+                                    }
+                                }
+                            });
+
+                            copyBtn.disabled = false;
+                            itemDiv.style.cursor = "pointer";
+
+                            // Prevent click propagation on button
+                            copyBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                this.copyAbilities(loadedGridSlots);
+                            };
+
+                            // Also allow clicking the whole row
+                            itemDiv.onclick = () => {
+                                this.copyAbilities(loadedGridSlots);
+                            };
+
+                        } catch (e) {
+                            console.error("Failed to parse abilities data", e);
+                        }
+                    } else {
+                        abilitiesContainer.innerHTML = '<span style="font-size:0.75rem; color:#888;">構成データなし</span>';
+                    }
+                });
+
+                itemDiv.appendChild(rankDiv);
+                itemDiv.appendChild(scoreDiv);
+                itemDiv.appendChild(abilitiesContainer);
+                itemDiv.appendChild(copyBtn);
+
+                this.rankingList.appendChild(itemDiv);
+            };
+
+            // Render all top 15 entries
+            leaderboard.forEach(entry => renderEntry(entry));
+
+            // If player is not in top 15, fetch their rank and append it
+            if (!playerInTop15 && PlayFabService.playFabId) {
+                PlayFabService.getPlayerRank((rankData, rankError) => {
+                    if (!rankError && rankData) {
+                        const separator = document.createElement("div");
+                        separator.style.textAlign = "center";
+                        separator.style.margin = "10px 0";
+                        separator.style.color = "#aaa";
+                        separator.innerText = "・・・";
+                        this.rankingList.appendChild(separator);
+
+                        renderEntry(rankData, true);
+                    }
+                });
+            }
+        });
+    }
+
+    copyAbilities(newSlots) {
+        if (!newSlots || newSlots.length !== 9) return;
+        this.gridSlots = [...newSlots];
+        this.updateGridVisuals();
+        this.checkStartCondition();
+        this.rankingModal.classList.add("hidden");
+        // Add a small visual feedback
+        if (this.game && this.game.audio) this.game.audio.playSE('button');
+    }
+
     showSelectionScreen() {
         this.selectionScreen.classList.remove("hidden");
     }
@@ -84,6 +240,24 @@ class UI {
         this.gameScreen.classList.add("hidden");
         this.resultScreen.classList.remove("hidden");
         document.getElementById("final-score").innerText = "到達ステージ: " + this.game.stage;
+        document.getElementById("player-rank-display").innerText = "順位を取得中...";
+
+        // Submit Score and Data to PlayFab
+        if (typeof PlayFabService !== 'undefined') {
+            PlayFabService.submitScoreAndData(this.game.stage, this.gridSlots);
+
+            // Fetch personal rank
+            PlayFabService.getPlayerRank((rankData, error) => {
+                const rankDisplay = document.getElementById("player-rank-display");
+                if (error) {
+                    rankDisplay.innerText = "ランキング取得失敗";
+                } else if (rankData) {
+                    rankDisplay.innerText = `今日のあなたの順位: ${rankData.Position + 1}位`;
+                } else {
+                    rankDisplay.innerText = "ランキング圏外";
+                }
+            });
+        }
 
         // Render final grid in result screen
         const finalGrid = document.getElementById("final-abilities");

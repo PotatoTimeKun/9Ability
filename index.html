@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css?v=1.2">
     <link rel="icon" href="./icon.png">
+    <script src="https://download.playfab.com/PlayFabClientApi.js"></script>
 </head>
 
 <div id="game-container">
@@ -33,6 +34,7 @@
         </div>
 
         <div class="action-buttons">
+            <button id="ranking-btn">ランキング</button>
             <button id="auto-select-btn">おまかせ</button>
             <button id="reset-btn">クリア</button>
             <button id="start-btn" disabled>9つの能力を選択してください</button>
@@ -55,6 +57,18 @@
                 <li>配置が決まったら「スタート」を押し、どこまで生き残れるか挑戦しましょう！</li>
             </ul>
             <button id="close-tutorial-btn" style="width: 100%;">閉じる</button>
+        </div>
+    </div>
+
+    <!-- Ranking Modal -->
+    <div id="ranking-modal" class="screen hidden" style="background: rgba(0,0,0,0.8); z-index: 200;">
+        <div
+            style="background: var(--bg-color); padding: 30px; border-radius: 10px; max-width: 600px; width: 90%; text-align: left; border: 1px solid var(--glass-border); max-height: 80vh; display: flex; flex-direction: column;">
+            <h2 style="text-align: center; margin-top: 0;">Daily Ranking (Top 15)</h2>
+            <div id="ranking-list" style="overflow-y: auto; flex-grow: 1; margin-bottom: 20px;">
+                <div style="text-align: center; color: #aaa;">読み込み中...</div>
+            </div>
+            <button id="close-ranking-btn" style="width: 100%;">閉じる</button>
         </div>
     </div>
 
@@ -86,7 +100,8 @@
     <!-- Result Screen -->
     <div id="result-screen" class="screen hidden">
         <h2>Game Over</h2>
-        <p>クリアしたステージ数: <span id="final-score">0</span></p>
+        <p><span id="final-score">0</span></p>
+        <p id="player-rank-display" style="color: #feca57; font-weight: bold; height: 1.5em;"></p>
         <div id="final-abilities" class="grid" style="margin: 20px 0; pointer-events: none;"></div>
         <div style="display: flex; gap: 10px;">
             <button id="download-btn">画像を保存</button>
@@ -110,6 +125,7 @@
 
 <!-- Scripts -->
 <script src="js/ability.js?v=1.2"></script>
+<script src="js/playfab.js?v=1.2"></script>
 <script src="js/ui.js?v=1.2"></script>
 <script src="js/player.js?v=1.2"></script>
 <script src="js/enemy.js?v=1.2"></script>
