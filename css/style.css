@@ -377,6 +377,11 @@ canvas {
     flex: 1;
     min-width: 80px;
     margin-top: 0;
+    white-space: nowrap;
+}
+
+#start-btn {
+    flex-basis: 100%;
 }
 
 .ability-item {
@@ -529,15 +534,6 @@ canvas {
         width: 30px;
         height: 30px;
         font-size: 1rem;
-    }
-
-    .action-buttons {
-        flex-direction: column;
-    }
-
-    .action-buttons button {
-        width: 100%;
-        margin-top: 5px;
     }
 }
 
