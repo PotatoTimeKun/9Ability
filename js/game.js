@@ -7,6 +7,7 @@ class Game {
 
         this.lastTime = 0;
         this.isRunning = false;
+        this.isPaused = false;
 
         this.player = null;
         this.abilities = null;
@@ -50,13 +51,24 @@ class Game {
 
     loop(timestamp) {
         if (!this.isRunning) return;
+
+        requestAnimationFrame((t) => this.loop(t));
+
+        if (this.isPaused) return;
+
         const dt = (timestamp - this.lastTime) / 1000;
         this.lastTime = timestamp;
 
         this.update(dt);
         this.draw();
+    }
 
-        requestAnimationFrame((t) => this.loop(t));
+    togglePause() {
+        if (!this.isRunning) return;
+        this.isPaused = !this.isPaused;
+        if (!this.isPaused) {
+            this.lastTime = performance.now(); // Prevent large dt
+        }
     }
 
     update(dt) {

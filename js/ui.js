@@ -27,6 +27,11 @@ class UI {
         this.resetBtn = document.getElementById("reset-btn");
         this.downloadBtn = document.getElementById("download-btn");
 
+        this.pauseBtn = document.getElementById("pause-btn");
+        this.pauseScreen = document.getElementById("pause-screen");
+        this.resumeBtn = document.getElementById("resume-btn");
+        this.restartInGameBtn = document.getElementById("restart-in-game-btn");
+
         this.tutorialBtn = document.getElementById("tutorial-btn");
         this.tutorialModal = document.getElementById("tutorial-modal");
         this.closeTutorialBtn = document.getElementById("close-tutorial-btn");
@@ -58,9 +63,35 @@ class UI {
             });
         }
 
+        const reloadWithBuild = () => {
+            const buildIds = this.gridSlots.map(a => a ? a.id : "").join(".");
+            // Append "?b=" parameter to persist build
+            location.href = window.location.origin + window.location.pathname + (buildIds.replace(/\./g, "") !== "" ? "?b=" + buildIds : "");
+        };
+
         if (this.restartBtn) {
-            this.restartBtn.addEventListener("click", () => {
-                location.href = window.location.pathname; // Restart without query args normally
+            this.restartBtn.addEventListener("click", reloadWithBuild);
+        }
+
+        if (this.restartInGameBtn) {
+            this.restartInGameBtn.addEventListener("click", reloadWithBuild);
+        }
+
+        if (this.pauseBtn) {
+            this.pauseBtn.addEventListener("click", () => {
+                if (this.game && this.game.isRunning && !this.game.isPaused) {
+                    this.game.togglePause();
+                    this.pauseScreen.classList.remove("hidden");
+                }
+            });
+        }
+
+        if (this.resumeBtn) {
+            this.resumeBtn.addEventListener("click", () => {
+                if (this.game && this.game.isPaused) {
+                    this.game.togglePause();
+                    this.pauseScreen.classList.add("hidden");
+                }
             });
         }
 
@@ -637,7 +668,7 @@ class UI {
 
         const m = Math.floor(this.game.timeRemaining / 60).toString().padStart(2, '0');
         const s = Math.floor(this.game.timeRemaining % 60).toString().padStart(2, '0');
-        this.timeDisplay.innerText = `${m}:${s}`;
+        this.timeDisplay.innerText = `Next Boss: ${m}:${s}`;
 
         this.levelDisplay.innerText = `Lv: ${this.game.player.level}`;
 

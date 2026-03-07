@@ -72,13 +72,27 @@
         </div>
     </div>
 
+    <!-- Pause Screen -->
+    <div id="pause-screen" class="screen hidden" style="background: rgba(0,0,0,0.8); z-index: 200;">
+        <div
+            style="background: var(--bg-color); padding: 30px; border-radius: 10px; text-align: center; border: 1px solid var(--glass-border); width: 300px; max-width: 80%;">
+            <h2 style="margin-top: 0;">一時停止</h2>
+            <button id="resume-btn" style="width: 100%; margin-bottom: 10px;">再開</button>
+            <button id="restart-in-game-btn"
+                style="width: 100%; border-color: var(--accent-red); color: var(--accent-red);">やり直す</button>
+        </div>
+    </div>
+
     <!-- Main Game UI -->
     <div id="game-screen" class="screen hidden">
         <canvas id="game-canvas"></canvas>
         <div id="hud">
-            <div class="hud-top">
+            <div class="hud-top" style="align-items: center; gap: 20px;">
                 <span id="stage-display">Stage: 1</span>
-                <span id="time-display">01:00</span>
+                <span id="time-display" style="color: #ff6b81; font-size: 1.2rem; margin-right: auto;">Next Boss:
+                    01:00</span>
+                <button id="pause-btn"
+                    style="pointer-events: auto; padding: 5px 15px; font-size: 0.9rem; cursor: pointer;">一時停止</button>
             </div>
             <div class="hud-bottom">
                 <div id="xp-bar-container">
