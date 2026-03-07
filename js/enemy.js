@@ -27,9 +27,27 @@ class Enemy {
         }
 
         this.damage = 15; // Set base damage so it can scale
+
+        // Physics and visual additions
+        this.vx = 0;
+        this.vy = 0;
+        this.flashTimer = 0;
     }
 
     update(dt, player, game) {
+        // Handle visual flash timer
+        if (this.flashTimer > 0) {
+            this.flashTimer -= dt;
+        }
+
+        // Apply external velocity (Knockback)
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+
+        // Friction to smoothly degrade knockback
+        this.vx *= 0.85;
+        this.vy *= 0.85;
+
         // Immobilized handling (Light Chain d7 / Time Stop s1)
         if (this.immobilizedTimer > 0) {
             this.immobilizedTimer -= dt;
@@ -65,7 +83,13 @@ class Enemy {
     draw(ctx) {
         ctx.save();
         ctx.translate(this.x, this.y);
-        ctx.fillStyle = this.color;
+
+        // Flash white when damaged
+        if (this.flashTimer > 0) {
+            ctx.fillStyle = "#ffffff";
+        } else {
+            ctx.fillStyle = this.color;
+        }
 
         // Draw shape based on type
         ctx.beginPath();
@@ -107,11 +131,10 @@ class Boss extends Enemy {
             this.color = "#70a1ff"; // Tank/Blue
             this.abilityCooldown = 4.0;
         } else { // "boss-shooter" or default
-            this.type = "boss-shooter";
             this.hp = baseHp;
             this.speed = baseSpeed;
             this.color = "#9b59b6"; // Shooter/Purple
-            this.abilityCooldown = 3.0;
+            this.abilityCooldown = 2.0; // Shoot faster
         }
 
         this.abilityTimer = this.abilityCooldown;
@@ -173,9 +196,15 @@ class Boss extends Enemy {
             for (let i = 0; i < 3; i++) {
                 const types = ["triangle", "circle", "square"];
                 const eType = types[Math.floor(Math.random() * types.length)];
-                let enemy = new Enemy(this.x + (Math.random() - 0.5) * 100, this.y + (Math.random() - 0.5) * 100, eType);
+                let enemy = new Enemy(this.x, this.y, eType);
                 enemy.hp *= (1 + (game.stage - 1) * 0.8);
                 enemy.speed *= (1 + (game.stage - 1) * 0.2);
+
+                // Shoot them outward to prevent sticking inside the Boss
+                let angle = (Math.PI * 2 / 3) * i;
+                enemy.vx = Math.cos(angle) * 300;
+                enemy.vy = Math.sin(angle) * 300;
+
                 game.enemies.push(enemy);
             }
         } else {
@@ -184,9 +213,15 @@ class Boss extends Enemy {
             this.abilityTimer = this.abilityCooldown;
             game.createFloatingText("BULLET HELL", this.x, this.y - 40, "#fff");
 
-            for (let i = 0; i < 12; i++) {
-                let angle = (Math.PI * 2 / 12) * i;
-                game.enemies.push(new BossProjectile(this.x, this.y, angle, this.hp * 0.05));
+            for (let i = 0; i < 18; i++) { // More bullets
+                let angle = (Math.PI * 2 / 18) * i;
+                // Faster bullets with a bigger radius
+                let proj = new BossProjectile(this.x, this.y, angle, this.hp * 0.08);
+                proj.size = 15;
+                proj.speed = 220;
+                proj.vx = Math.cos(angle) * proj.speed;
+                proj.vy = Math.sin(angle) * proj.speed;
+                game.enemies.push(proj);
             }
         }
     }

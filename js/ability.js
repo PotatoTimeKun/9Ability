@@ -291,6 +291,13 @@ class AbilityManager {
                         }
                         if (!isNaN(finalDamage) && finalDamage > 0) {
                             enemy.hp -= finalDamage;
+                            enemy.flashTimer = 0.1; // Add damage flash
+
+                            // Small projectile knockback
+                            let kbx = (p.vx || 0) * 0.1;
+                            let kby = (p.vy || 0) * 0.1;
+                            enemy.vx += kbx;
+                            enemy.vy += kby;
                         }
                         hit = true;
 
@@ -312,9 +319,15 @@ class AbilityManager {
                 game.enemies.forEach(enemy => {
                     // simplified distance to line segment
                     if (Math.abs(p.vx) > 0) { // Horizontal
-                        if (Math.abs(enemy.y - p.y) < enemy.size + p.size) enemy.hp -= p.damage * dt * 5;
+                        if (Math.abs(enemy.y - p.y) < enemy.size + p.size) {
+                            enemy.hp -= p.damage * dt * 5;
+                            enemy.flashTimer = 0.1;
+                        }
                     } else { // Vertical
-                        if (Math.abs(enemy.x - p.x) < enemy.size + p.size) enemy.hp -= p.damage * dt * 5;
+                        if (Math.abs(enemy.x - p.x) < enemy.size + p.size) {
+                            enemy.hp -= p.damage * dt * 5;
+                            enemy.flashTimer = 0.1;
+                        }
                     }
                 });
             }
@@ -341,8 +354,8 @@ class AbilityManager {
                 let dy = enemy.y - this.player.y;
                 let dist = Math.hypot(dx, dy);
                 if (dist > 0) {
-                    enemy.x += (dx / dist) * 100 * a1Count; // knockback scales with stack
-                    enemy.y += (dy / dist) * 100 * a1Count;
+                    enemy.vx += (dx / dist) * 1000 * a1Count; // knockback vector scales with stack
+                    enemy.vy += (dy / dist) * 1000 * a1Count;
                 }
             });
         } else if (id === "a2") { // Auto Aim
@@ -496,6 +509,7 @@ class AbilityManager {
                     game.createFloatingText("Cri!", enemy.x, enemy.y - 20, "#f1c40f");
                 }
                 enemy.hp -= finalDamage;
+                enemy.flashTimer = 0.1; // Flash on AOE takes
                 if (callback) callback(enemy);
             }
         });

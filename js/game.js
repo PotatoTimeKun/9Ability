@@ -110,15 +110,15 @@ class Game {
                     this.player.takeDamage(dmg, this);
 
                     // Basic knockback, enhanced by d6
-                    let knockbackForce = 30;
+                    let knockbackForce = 300; // Increased base magnitude to serve as velocity
                     if (this.abilities) {
                         let d6Count = this.abilities.getAbilityCount("d6");
                         if (d6Count > 0) {
-                            knockbackForce = 30 + (120 * d6Count); // Stronger pushback per stack
+                            knockbackForce = 300 + (1200 * d6Count); // Stronger pushback per stack
                         }
                     }
-                    enemy.x += dx / dist * knockbackForce;
-                    enemy.y += dy / dist * knockbackForce;
+                    enemy.vx = (dx / dist) * knockbackForce;
+                    enemy.vy = (dy / dist) * knockbackForce;
                 }
             }
 
@@ -239,9 +239,23 @@ class Game {
 
     spawnBoss() {
         this.bossActive = true;
+
+        // Emphasize the boss entering
+        if (this.audio) this.audio.playSE('boss-siren');
+        this.createFloatingText("WARNING: BOSS APPROACHING", this.canvas.width / 2, this.canvas.height / 2 - 50, "#ff4757", 40);
+        this.createParticles(this.canvas.width / 2, this.canvas.height / 2, "#ff4757", 100);
+
         // Kill existing regular enemies when boss appears
-        this.enemies.forEach(e => this.createParticles(e.x, e.y, e.color, 5));
+        this.enemies.forEach(e => this.createParticles(e.x, e.y, e.color, 15));
         this.enemies = [];
+
+        // Screen shake effect for impact
+        this.canvas.parentElement.classList.add("shake-hard");
+        setTimeout(() => {
+            if (this.canvas && this.canvas.parentElement) {
+                this.canvas.parentElement.classList.remove("shake-hard");
+            }
+        }, 800);
 
         const bossTypes = ["boss-rusher", "boss-shooter", "boss-summoner"];
         const selectedBossType = bossTypes[Math.floor(Math.random() * bossTypes.length)];

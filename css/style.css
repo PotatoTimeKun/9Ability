@@ -99,6 +99,10 @@ body {
     animation-iteration-count: 1;
 }
 
+.shake-hard {
+    animation: shake 0.1s infinite;
+}
+
 h1,
 h2,
 h3 {
