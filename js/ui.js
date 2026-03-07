@@ -280,13 +280,24 @@ class UI {
             // Fetch personal rank
             PlayFabService.getPlayerRank((rankData, error) => {
                 const rankDisplay = document.getElementById("player-rank-display");
+
+                // Base share text
+                const buildIds = this.gridSlots.map(a => a ? a.id : "").join(".");
+                const shareUrl = window.location.origin + window.location.pathname + "?b=" + buildIds;
+
+                let rankText = "";
                 if (error) {
                     rankDisplay.innerText = "ランキング取得失敗";
                 } else if (rankData) {
                     rankDisplay.innerText = `今日のあなたの順位: ${rankData.Position + 1}位`;
+                    rankText = `\nデイリーランキング: ${rankData.Position + 1}位`;
                 } else {
                     rankDisplay.innerText = "ランキング圏外";
+                    rankText = `\nデイリーランキング: 圏外`;
                 }
+
+                // Update tweet text with rank information
+                this.shareText = `【私を構成する9つの能力】\nステージ${this.game.stage}到達！${rankText}\n\n#私を構成する9つの能力\n同じ能力で開始 → ${shareUrl}`;
             });
         }
 
@@ -309,7 +320,7 @@ class UI {
         const buildIds = this.gridSlots.map(a => a ? a.id : "").join(".");
         const shareUrl = window.location.origin + window.location.pathname + "?b=" + buildIds;
 
-        // Shortened tweet text with corrected title
+        // Default shortened tweet text (will be updated by PlayFab callback if available)
         this.shareText = `【私を構成する9つの能力】\nステージ${this.game.stage}到達！\n\n#私を構成する9つの能力\n同じ能力で開始 → ${shareUrl}`;
     }
 
