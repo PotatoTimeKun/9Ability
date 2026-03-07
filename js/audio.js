@@ -8,6 +8,8 @@ class AudioManager {
         this.seDamaged = document.getElementById('se-damaged');
         this.seGameover = document.getElementById('se-gameover');
         this.seSlash = document.getElementById('se-slash');
+        this.seEnemyDead = document.getElementById('se-enemy-dead');
+        this.seBang = document.getElementById('se-bang');
 
         // Load saved mute state
         const savedMute = localStorage.getItem('9ability_muted');
@@ -31,7 +33,7 @@ class AudioManager {
     }
 
     setVolume(vol) {
-        let audios = [this.bgm, this.seButton, this.seBossSiren, this.seBossWin, this.seCharge, this.seDamaged, this.seGameover, this.seSlash];
+        let audios = [this.bgm, this.seButton, this.seBossSiren, this.seBossWin, this.seCharge, this.seDamaged, this.seGameover, this.seSlash, this.seEnemyDead, this.seBang];
         audios.forEach(a => {
             if (a) a.volume = vol;
         });
@@ -60,6 +62,8 @@ class AudioManager {
             case 'damage': audio = this.seDamaged; break;
             case 'gameover': audio = this.seGameover; break;
             case 'slash': audio = this.seSlash; break;
+            case 'enemy-dead': audio = this.seEnemyDead; break;
+            case 'bang': audio = this.seBang; break;
         }
 
         if (audio) {

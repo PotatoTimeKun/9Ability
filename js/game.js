@@ -123,6 +123,10 @@ class Game {
             }
 
             if (enemy.hp <= 0) {
+                if (this.audio && !enemy.type?.startsWith("boss")) {
+                    this.audio.playSE('enemy-dead');
+                }
+
                 let xpGained = enemy.xpValue || 1;
                 if (this.abilities && this.abilities.doubleXp) xpGained *= 2;
                 this.player.addXp(xpGained, this); // Pass this reference for levelUp hooks
@@ -145,6 +149,7 @@ class Game {
                         let radius = 80 + (20 * (a8Count - 1));
                         let dmg = 30 * a8Count;
                         this.visualEffects.push(new VisualEffect("shockwave", enemy.x, enemy.y, 0.2, radius, "#ff6b81"));
+                        if (this.audio) this.audio.playSE('bang');
                         this.abilities.checkDamageRadius(this, enemy.x, enemy.y, radius, dmg, null);
                     }
                 }
@@ -241,7 +246,7 @@ class Game {
         this.bossActive = true;
 
         // Emphasize the boss entering
-        if (this.audio) this.audio.playSE('boss-siren');
+        if (this.audio) this.audio.playSE('siren');
         this.createFloatingText("WARNING: BOSS APPROACHING", this.canvas.width / 2, this.canvas.height / 2 - 50, "#ff4757", 40);
         this.createParticles(this.canvas.width / 2, this.canvas.height / 2, "#ff4757", 100);
 

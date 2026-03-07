@@ -349,6 +349,7 @@ class AbilityManager {
             let radius = 150 + (25 * (a1Count - 1));
             game.createParticles(this.player.x, this.player.y, "#ff4757", 20);
             game.visualEffects.push(new VisualEffect("shockwave", this.player.x, this.player.y, 0.3, radius, "#ff4757"));
+            if (game.audio) game.audio.playSE('bang');
             this.checkDamageRadius(game, this.player.x, this.player.y, radius, (20 * a1Count) * bingoDmgMult, (enemy) => {
                 let dx = enemy.x - this.player.x;
                 let dy = enemy.y - this.player.y;
