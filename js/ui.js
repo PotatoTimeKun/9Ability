@@ -201,7 +201,16 @@ class UI {
         ctx.fillStyle = "#e6edf3";
 
         // Wrap text roughly for ability names
-        let namesText = "構成: " + this.selectedAbilityNames;
+        const abilityCounts = {};
+        this.gridSlots.forEach(a => {
+            if (a) {
+                abilityCounts[a.name] = (abilityCounts[a.name] || 0) + 1;
+            }
+        });
+        const abilityNames = Object.entries(abilityCounts)
+            .map(([name, count]) => count > 1 ? `${name}×${count}` : name)
+            .join('、');
+        let namesText = "構成: " + (abilityNames || "なし");
         this.wrapText(ctx, namesText, 300, 520, 500, 24);
 
         // Download
