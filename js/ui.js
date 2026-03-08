@@ -135,6 +135,21 @@ class UI {
                 return;
             }
 
+            // --- Pre-process leaderboard to calculate tie ranks ---
+            let currentRank = 1;
+            let previousScore = null;
+            let playersProcessed = 0;
+
+            leaderboard.forEach((entry, index) => {
+                if (previousScore === null || entry.StatValue < previousScore) {
+                    currentRank = playersProcessed + 1;
+                }
+                entry.DisplayRank = currentRank;
+                previousScore = entry.StatValue;
+                playersProcessed++;
+            });
+            // --------------------------------------------------------
+
             this.rankingList.innerHTML = "";
             let playerInTop15 = false;
 
@@ -153,7 +168,11 @@ class UI {
 
                 const rankDiv = document.createElement("div");
                 rankDiv.className = "rank-info";
-                rankDiv.innerText = `${entry.Position + 1}位`;
+
+                // Use DisplayRank if available, otherwise fallback to standard Position-based formatting
+                const rankToDisplay = entry.DisplayRank !== undefined ? entry.DisplayRank : (entry.Position + 1);
+                rankDiv.innerText = `${rankToDisplay}位`;
+
                 if (isMe) {
                     rankDiv.innerText += "\n(あなた)";
                     rankDiv.style.fontSize = "0.9rem";
@@ -273,31 +292,63 @@ class UI {
         document.getElementById("final-score").innerText = "到達ステージ: " + this.game.stage;
         document.getElementById("player-rank-display").innerText = "順位を取得中...";
 
+        // Generate build string and share URL
+        const buildIds = this.gridSlots.map(a => a ? a.id : "").join(".");
+        const shareUrl = window.location.origin + window.location.pathname + "?b=" + buildIds;
+
+        // Default shortened tweet text (will be updated by PlayFab callback if available)
+        this.shareText = `【私を構成する9つの能力】\nステージ${this.game.stage}到達！\n\n#私を構成する9つの能力\n同じ能力で開始 → ${shareUrl}`;
+
         // Submit Score and Data to PlayFab
         if (typeof PlayFabService !== 'undefined') {
-            PlayFabService.submitScoreAndData(this.game.stage, this.gridSlots);
+            PlayFabService.submitScoreAndData(this.game.stage, this.gridSlots, () => {
+                // Fetch full leaderboard to calculate accurate tie-rank
+                PlayFabService.getLeaderboard((leaderboard, error) => {
+                    const rankDisplay = document.getElementById("player-rank-display");
+                    let rankText = "";
 
-            // Fetch personal rank
-            PlayFabService.getPlayerRank((rankData, error) => {
-                const rankDisplay = document.getElementById("player-rank-display");
+                    if (error) {
+                        rankDisplay.innerText = "ランキング取得失敗";
+                    } else if (leaderboard) {
+                        let calculatedRank = null;
+                        let currentRank = 1;
+                        let previousScore = null;
+                        let playersProcessed = 0;
 
-                // Base share text
-                const buildIds = this.gridSlots.map(a => a ? a.id : "").join(".");
-                const shareUrl = window.location.origin + window.location.pathname + "?b=" + buildIds;
+                        // Identify rank by score across the leaderboard
+                        for (let i = 0; i < leaderboard.length; i++) {
+                            const entry = leaderboard[i];
+                            if (previousScore === null || entry.StatValue < previousScore) {
+                                currentRank = playersProcessed + 1;
+                            }
 
-                let rankText = "";
-                if (error) {
-                    rankDisplay.innerText = "ランキング取得失敗";
-                } else if (rankData) {
-                    rankDisplay.innerText = `今日のあなたの順位: ${rankData.Position + 1}位`;
-                    rankText = `\nデイリーランキング: ${rankData.Position + 1}位`;
-                } else {
-                    rankDisplay.innerText = "ランキング圏外";
-                    rankText = `\nデイリーランキング: 圏外`;
-                }
+                            // If we found the user's score range (or the exact user in the loop)
+                            if (this.game.stage >= entry.StatValue) {
+                                calculatedRank = currentRank;
+                                break;
+                            }
 
-                // Update tweet text with rank information
-                this.shareText = `【私を構成する9つの能力】\nステージ${this.game.stage}到達！${rankText}\n\n#私を構成する9つの能力\n同じ能力で開始 → ${shareUrl}`;
+                            previousScore = entry.StatValue;
+                            playersProcessed++;
+                        }
+
+                        // If not found in the fetched top 15, assume outside (or fallback)
+                        if (calculatedRank === null) {
+                            calculatedRank = playersProcessed + 1; // Simplistic fallback
+                        }
+
+                        rankDisplay.innerText = `今日のあなたの順位: ${calculatedRank}位`;
+                        rankText = `\nデイリーランキング: ${calculatedRank}位`;
+
+                        // Update tweet text with rank information
+                        this.shareText = `【私を構成する9つの能力】\nステージ${this.game.stage}到達！${rankText}\n\n#私を構成する9つの能力\n同じ能力で開始 → ${shareUrl}`;
+
+                    } else {
+                        rankDisplay.innerText = "ランキング圏外";
+                        rankText = `\nデイリーランキング: 圏外`;
+                        this.shareText = `【私を構成する9つの能力】\nステージ${this.game.stage}到達！${rankText}\n\n#私を構成する9つの能力\n同じ能力で開始 → ${shareUrl}`;
+                    }
+                });
             });
         }
 
@@ -315,13 +366,6 @@ class UI {
                 finalGrid.appendChild(cell);
             });
         }
-
-        // Generate build string and share URL
-        const buildIds = this.gridSlots.map(a => a ? a.id : "").join(".");
-        const shareUrl = window.location.origin + window.location.pathname + "?b=" + buildIds;
-
-        // Default shortened tweet text (will be updated by PlayFab callback if available)
-        this.shareText = `【私を構成する9つの能力】\nステージ${this.game.stage}到達！\n\n#私を構成する9つの能力\n同じ能力で開始 → ${shareUrl}`;
     }
 
     resetAbilities() {

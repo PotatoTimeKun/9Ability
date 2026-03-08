@@ -41,21 +41,11 @@ const PlayFabService = {
         });
     },
 
-    submitScoreAndData: function (stage, gridSlots) {
-        if (!this.playFabId) return;
-
-        // Submit Score to DailyRanking
-        const requestStat = {
-            Statistics: [{
-                StatisticName: "DailyRanking",
-                Value: stage
-            }]
-        };
-
-        PlayFabClientSDK.UpdatePlayerStatistics(requestStat, (result, error) => {
-            if (error) console.error("Error updating statistics", error);
-            else console.log("Score submitted successfully:", stage);
-        });
+    submitScoreAndData: function (stage, gridSlots, callback) {
+        if (!this.playFabId) {
+            if (callback) callback();
+            return;
+        }
 
         // Fetch current rank to check if we beat our high score before overriding user data
         this.getPlayerRank((rankData, rankError) => {
@@ -67,23 +57,43 @@ const PlayFabService = {
                 }
             }
 
-            if (isNewRecord) {
-                // Submit Abilities configuration
-                const abilitiesIds = gridSlots.map(a => a ? a.id : null);
-                const requestData = {
-                    Data: {
-                        "Abilities": JSON.stringify(abilitiesIds)
-                    },
-                    Permission: "Public"
-                };
+            // Submit Score to DailyRanking
+            const requestStat = {
+                Statistics: [{
+                    StatisticName: "DailyRanking",
+                    Value: stage
+                }]
+            };
 
-                PlayFabClientSDK.UpdateUserData(requestData, (result, error) => {
-                    if (error) console.error("Error updating user data", error);
-                    else console.log("Abilities data updated for new high score!");
-                });
-            } else {
-                console.log("Score did not exceed current high score. Abilities data not updated.");
-            }
+            PlayFabClientSDK.UpdatePlayerStatistics(requestStat, (statResult, statError) => {
+                if (statError) {
+                    console.error("Error updating statistics", statError);
+                    if (callback) callback();
+                    return;
+                }
+
+                console.log("Score submitted successfully:", stage);
+
+                if (isNewRecord) {
+                    // Submit Abilities configuration
+                    const abilitiesIds = gridSlots.map(a => a ? a.id : null);
+                    const requestData = {
+                        Data: {
+                            "Abilities": JSON.stringify(abilitiesIds)
+                        },
+                        Permission: "Public"
+                    };
+
+                    PlayFabClientSDK.UpdateUserData(requestData, (dataResult, dataError) => {
+                        if (dataError) console.error("Error updating user data", dataError);
+                        else console.log("Abilities data updated for new high score!");
+                        if (callback) callback();
+                    });
+                } else {
+                    console.log("Score did not exceed current high score. Abilities data not updated.");
+                    if (callback) callback();
+                }
+            });
         });
     },
 
