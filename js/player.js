@@ -2,6 +2,7 @@ class Player {
     constructor(x, y) {
         this.x = x;
         this.y = y;
+        this.baseSize = 20;
         this.size = 20;
         this.hp = 50;
         this.maxHp = 50;

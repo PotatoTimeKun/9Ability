@@ -9,6 +9,7 @@ const ABILITIES_DATA = [
     { id: "a7", type: "attack", name: "チェイン・ライトニング", desc: "敵から敵へ連鎖する雷", icon: "雷" },
     { id: "a8", type: "attack", name: "デッドリー・バースト", desc: "敵撃破時に爆発", icon: "爆" },
     { id: "a9", type: "attack", name: "ポイズン・オーラ", desc: "周囲の敵に継続ダメージを与える毒", icon: "毒" },
+    { id: "a10", type: "attack", name: "ハッキング", desc: "敵を味方にして他の敵へ自爆特攻させる", icon: "操" },
 
     // Defense (Blue)
     { id: "d1", type: "defense", name: "エナジー・シールド", desc: "一度だけ接触を防ぐバリアを定期的展開", icon: "盾" },
@@ -20,6 +21,7 @@ const ABILITIES_DATA = [
     { id: "d7", type: "defense", name: "ライト・チェーン", desc: "敵を数秒間移動不能にする", icon: "縛" },
     { id: "d8", type: "defense", name: "ライフ・イーター", desc: "敵を倒したときにライフを回復", icon: "喰" },
     { id: "d9", type: "defense", name: "体力ブースト", desc: "体力上限の増加量が増える", icon: "健" },
+    { id: "d10", type: "defense", name: "スパイン・アーマー", desc: "接触した敵に巨大な反撃ダメージとノックバック", icon: "棘" },
 
     // Special (Purple)
     { id: "s1", type: "special", name: "タイム・ストップ", desc: "定期的に全敵が1秒間静止", icon: "止" },
@@ -30,7 +32,8 @@ const ABILITIES_DATA = [
     { id: "s6", type: "special", name: "カオス・ダイス", desc: "ランダム能力発動（レベル補正あり）", icon: "乱" },
     { id: "s7", type: "special", name: "ラッキー・セブン", desc: "低確率でクリティカルヒット", icon: "運" },
     { id: "s8", type: "special", name: "モア・タイム", desc: "ボスが来るまでの時間を増やす", icon: "延" },
-    { id: "s9", type: "special", name: "ハードモード", desc: "敵の能力と経験値が2倍になる", icon: "難" }
+    { id: "s9", type: "special", name: "ハードモード", desc: "敵の能力と経験値が2倍になる", icon: "難" },
+    { id: "s10", type: "special", name: "シュリンク・コア", desc: "自機の当たり判定がひと回り小さくなる", icon: "縮" },
 ];
 
 class AbilityManager {
@@ -58,6 +61,7 @@ class AbilityManager {
             "a5": { cooldown: 4, timer: 0 }, // Cross Laser
             "a6": { cooldown: 1.5, timer: 0 }, // Split Shot
             "a7": { cooldown: 2, timer: 0 }, // Chain Lightning
+            "a10": { cooldown: 3, timer: 0 }, // Hacking
             "d1": { cooldown: 15, timer: 0 }, // Energy Shield
             "d2": { cooldown: 10, timer: 0 }, // Regeneration
             "d7": { cooldown: 8, timer: 0 },  // Light Chain
@@ -163,6 +167,14 @@ class AbilityManager {
 
         let s7Count = this.getAbilityCount("s7");
         this.critChance = s7Count * 0.15; // 15% crit per stack
+
+        let s10Count = this.getAbilityCount("s10");
+        if (s10Count > 0) {
+            // Shrink Core reduces the base size by ~15% per stack
+            this.player.size = this.player.baseSize * Math.pow(0.85, s10Count);
+        } else {
+            this.player.size = this.player.baseSize;
+        }
 
         // Apply Special Bingo bonuses globally
         let cdr = 1.0;
@@ -302,6 +314,15 @@ class AbilityManager {
                         hit = true;
 
                         // On hit triggers
+                        if (p.id === "a10") {
+                            // Turn this enemy into an ally bomb
+                            if (!enemy.type.startsWith("boss")) {
+                                enemy.isHacked = true;
+                                enemy.hackStack = p.stackCount || 1;
+                                enemy.color = "#2ed573"; // Turn green to indicate hacked
+                                game.createFloatingText("HACKED", enemy.x, enemy.y - 20, "#2ed573");
+                            }
+                        }
                         if (p.id === "a7") { // Chain lightning jump
                             let bingoMult = Number(1.0 + (this.bingoBonuses.attack * 0.1)) || 1.0;
                             let stCount = Number(p.stackCount) || this.getAbilityCount("a7") || 1;
@@ -463,8 +484,30 @@ class AbilityManager {
                 game.createFloatingText("CHAOS!", this.player.x, this.player.y - 40 - (i * 20), "#9b59b6");
                 this.fireAbility(randomAttack, game, s6Count); // Fired ability scales based on Chaos Dice count
             }
-        }
+        } else if (id === "a10") { // Hacking
+            let a10Count = overrideCount || this.getAbilityCount("a10");
+            let target = null;
+            let bestDist = 400 * this.sizeMultiplier; // Max range
 
+            // Find a non-hacked target to hack
+            game.enemies.forEach(e => {
+                if (!e.isHacked && !e.type.startsWith("boss")) {
+                    let d = Math.hypot(e.x - this.player.x, e.y - this.player.y);
+                    if (d < bestDist) { bestDist = d; target = e; }
+                }
+            });
+
+            if (target) {
+                if (game.audio) game.audio.playSE('slash'); // Play some generic attack sound
+                let angle = Math.atan2(target.y - this.player.y, target.x - this.player.x);
+                this.projectiles.push({
+                    id: "a10", x: this.player.x, y: this.player.y,
+                    vx: Math.cos(angle) * 350, vy: Math.sin(angle) * 350,
+                    size: 8 * this.sizeMultiplier, damage: 0, life: 1.5, pierce: 0, color: "#2ed573",
+                    stackCount: a10Count
+                });
+            }
+        }
     }
     chainLightning(game, fromEnemy, jumpsLeft, bingoDmgMult, stackCount) {
         if (jumpsLeft <= 0 || !fromEnemy) return;

@@ -100,25 +100,61 @@ class Game {
             enemy.update(dt, this.player, this);
 
             // Basic collision with player
-            if (this.player) {
+            if (this.player && !enemy.isHacked) {
                 const dx = enemy.x - this.player.x;
                 const dy = enemy.y - this.player.y;
                 const dist = Math.hypot(dx, dy);
                 if (dist < enemy.size + this.player.size / 2) {
+                    // Check Spine Armor (d10) before taking damage
+                    let spineTriggered = false;
+                    if (this.abilities) {
+                        let d10Count = this.abilities.getAbilityCount("d10");
+                        if (d10Count > 0) {
+                            spineTriggered = true;
+                            // Counter damage scaling with stacks and stage
+                            let counterDamage = 50 * d10Count * this.stage;
+
+                            // Massive Knockback
+                            let spineKnockback = 1500 * d10Count;
+
+                            if (enemy.type && enemy.type.startsWith("boss")) {
+                                counterDamage *= 0.1; // Only 10% damage to bosses
+                                spineKnockback *= 0.5; // Less knockback for bosses
+                                // For bosses, we might also want to interrupt their charge state
+                                if (enemy.state === "charge") {
+                                    enemy.state = "chase";
+                                    enemy.abilityTimer = enemy.abilityCooldown;
+                                }
+                            }
+
+                            enemy.hp -= counterDamage;
+                            enemy.flashTimer = 0.2;
+
+                            enemy.vx = (dx / dist) * spineKnockback;
+                            enemy.vy = (dy / dist) * spineKnockback;
+
+                            this.createParticles(enemy.x, enemy.y, "#bdc3c7", 15);
+                            this.createFloatingText("SPINE!", enemy.x, enemy.y - 20, "#bdc3c7");
+                            if (this.audio) this.audio.playSE('slash'); // Or a new sound if we had one
+                        }
+                    }
+
                     // Player takes damage
                     let dmg = (enemy.damage || 15) * this.stage;
                     this.player.takeDamage(dmg, this);
 
-                    // Basic knockback, enhanced by d6
-                    let knockbackForce = 300; // Increased base magnitude to serve as velocity
-                    if (this.abilities) {
-                        let d6Count = this.abilities.getAbilityCount("d6");
-                        if (d6Count > 0) {
-                            knockbackForce = 300 + (1200 * d6Count); // Stronger pushback per stack
+                    // Basic knockback if Spine wasn't triggered
+                    if (!spineTriggered) {
+                        let knockbackForce = 300; // Increased base magnitude to serve as velocity
+                        if (this.abilities) {
+                            let d6Count = this.abilities.getAbilityCount("d6");
+                            if (d6Count > 0) {
+                                knockbackForce = 300 + (1200 * d6Count); // Stronger pushback per stack
+                            }
                         }
+                        enemy.vx = (dx / dist) * knockbackForce;
+                        enemy.vy = (dy / dist) * knockbackForce;
                     }
-                    enemy.vx = (dx / dist) * knockbackForce;
-                    enemy.vy = (dy / dist) * knockbackForce;
                 }
             }
 

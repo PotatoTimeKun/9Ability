@@ -57,6 +57,11 @@ class Enemy {
         // Speed decay handling (Poison a9 / Clock Down s2)
         let currentSpeed = this.speed * (this.speedDecay || 1.0);
 
+        if (this.isHacked) {
+            this.updateHacked(dt, game, currentSpeed);
+            return;
+        }
+
         // Simple chase logic optionally target decoy
         let targetX = player.x;
         let targetY = player.y;
@@ -77,6 +82,70 @@ class Enemy {
         if (dist > 0) {
             this.x += (dx / dist) * currentSpeed * dt;
             this.y += (dy / dist) * currentSpeed * dt;
+        }
+    }
+
+    updateHacked(dt, game, currentSpeed) {
+        // Find nearest unhacked enemy to kamikaze into
+        let target = null;
+        let bestDist = Infinity;
+        game.enemies.forEach(e => {
+            if (e !== this && !e.isHacked && e.hp > 0) {
+                let d = Math.hypot(this.x - e.x, this.y - e.y);
+                if (d < bestDist) {
+                    bestDist = d;
+                    target = e;
+                }
+            }
+        });
+
+        if (target) {
+            const dx = target.x - this.x;
+            const dy = target.y - this.y;
+            const dist = Math.hypot(dx, dy);
+
+            // Move faster when hacked
+            const hackSpeed = currentSpeed * 1.5;
+            if (dist > this.size + target.size) {
+                this.x += (dx / dist) * hackSpeed * dt;
+                this.y += (dy / dist) * hackSpeed * dt;
+            } else {
+                // Explode!
+                this.explodeHacked(game);
+            }
+        } else {
+            // Wander or just stand still if no enemies
+            this.x += (Math.random() - 0.5) * currentSpeed * dt;
+            this.y += (Math.random() - 0.5) * currentSpeed * dt;
+        }
+    }
+
+    explodeHacked(game) {
+        if (this.hp <= 0) return; // Prevent double explosion
+        this.hp = 0; // Kill self
+
+        let stacks = this.hackStack || 1;
+        let radius = 60 + (30 * stacks);
+        let dmg = 40 * stacks * (game.stage || 1);
+
+        game.visualEffects.push(new VisualEffect("shockwave", this.x, this.y, 0.3, radius, "#2ed573"));
+        game.createParticles(this.x, this.y, "#2ed573", 20);
+        if (game.audio) game.audio.playSE('bang');
+
+        // Note: AbilityManager might not be directly here, but we can do a simple loop or use the manager
+        if (game.abilities) {
+            game.abilities.checkDamageRadius(game, this.x, this.y, radius, dmg, null);
+        } else {
+            // Fallback simple damage
+            game.enemies.forEach(e => {
+                if (e !== this && e.hp > 0) {
+                    let d = Math.hypot(e.x - this.x, e.y - this.y);
+                    if (d < radius + e.size) {
+                        e.hp -= dmg;
+                        e.flashTimer = 0.2;
+                    }
+                }
+            });
         }
     }
 
@@ -143,6 +212,19 @@ class Boss extends Enemy {
     }
 
     update(dt, player, game) {
+        // Handle visual flash timer
+        if (this.flashTimer > 0) {
+            this.flashTimer -= dt;
+        }
+
+        // Apply external velocity (Knockback)
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+
+        // Friction to smoothly degrade knockback
+        this.vx *= 0.85;
+        this.vy *= 0.85;
+
         // Debuffs
         if (this.immobilizedTimer > 0) {
             this.immobilizedTimer -= dt;
